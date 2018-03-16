@@ -111,3 +111,21 @@ EOF
 		exit 1
 	fi
 }
+
+# Validates if a bucket exists and belongs to active AWS user
+doesBucketExist() {
+		set +o errexit
+
+    if aws s3api head-bucket --bucket ${1};
+    then
+      #log_success "Step ${1:-} completed"
+			log_debug "S3 bucket ${1} exists"
+    	set -o errexit 
+			return 0
+    else
+      #log_error "Cannot access deis bucket(s) with provided AWS Access Key and Secret"
+			log_debug "S3 bucket does NOT ${1} exist or user has not access to it"
+    	set -o errexit 
+      return 1
+    fi        
+}

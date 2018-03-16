@@ -24,16 +24,17 @@ usage () {
 	cat << EOF
 Usage: $0 -option [CLUSTER NAME]
 
-Creates a (opiniated) Kubernetes cluster on AWS. 
+Creates a production grade Kubernetes cluster on AWS. 
+
 Cluster is created with private topololy with a bastion host to access it.
 
 This script is a thin layer on top of Kops which does the heavy lifting.
 
 OPTIONS:
-  -k          public ssh key used to access nodes, a new one will be created if none set
-  -z          aws availability zone where cluster is created, defaults to "eu-west-1a"
-  -v          verbose logging
-  -h 					show this message
+  -k      public ssh key used to access nodes, a new one will be created if none set
+  -z      aws availability zone where cluster is created, defaults to "eu-west-1a"
+  -v      verbose logging
+  -h      show this message
 
 The following env vars are supported for further customization:
 
@@ -56,6 +57,16 @@ EOF
 }
 
 validateDeps() {
+  cat << EOF
+  
+---------------------------
+> Step ${1:-}: Validate binaries
+---------------------------
+
+Validate that all requried binaries needed for this installation is present and executable.
+
+EOF
+
 	checkBinary aws "https://docs.aws.amazon.com/cli/latest/userguide/installing.html"
 	checkBinary kubectl "https://kubernetes.io/docs/tasks/tools/install-kubectl/"
 	checkBinary kops "https://github.com/kubernetes/kops/blob/master/docs/install.md"
@@ -63,7 +74,17 @@ validateDeps() {
 	log_success "Binary dependency checks passed"
 }
 
-validateSshKey() {
+configureSshKey() {
+  cat << EOF
+  
+---------------------------
+> Step ${1:-}: Validate binaries
+---------------------------
+
+Validate that all requried binaries needed for this installation is present and executable.
+
+EOF
+
   SSH_KEY=${SSH_KEY:-}
 
   if [ ! -z $SSH_KEY ]; then
@@ -80,7 +101,7 @@ validateSshKey() {
         
     # Check if key already exist at that location, if so prompt user
     if [ -f "${SSH_KEY_PRIV}" ] ; then
-      if prompt "Key ${SSH_KEY_PRIV} already exists, is this the correct key pair to use"; then
+      if promptDefaultYes "Key ${SSH_KEY_PRIV} already exists, is this the correct key pair to use"; then
         exit 1
       fi
     else 
@@ -93,18 +114,47 @@ validateSshKey() {
  	log_success "Using ssh key $SSH_KEY"
 }
 
-
 createStateStore() {
-	log_info "Creating state store bucket ${KOPS_STATE_STORE_NAME}..."
+  cat << EOF
+  
+---------------------------------
+> Step ${1:-}: Create kops state store
+---------------------------------
 
-	aws s3api create-bucket --bucket ${KOPS_STATE_STORE_NAME} --region us-east-1 &> /dev/null || (log_error "Failed creating state store bucket '${KOPS_STATE_STORE_NAME}', probably because bucket already exist or due to invalid permissions" && exit 1)
-	aws s3api put-bucket-versioning --bucket ${KOPS_STATE_STORE_NAME}  --versioning-configuration Status=Enabled
-	
-	log_success "State store bucket ${KOPS_STATE_STORE_NAME} created"
+Kops saves cluster state in a S3 bucket. This bucket ${KOPS_STATE_STORE_NAME} will be created 
+in this step.
+
+EOF
+
+  if doesBucketExist ${KOPS_STATE_STORE_NAME};
+  then
+    if promptDefaultYes "Bucket ${KOPS_STATE_STORE_NAME} already exists, do want to (re)use this bucket to host clusters state store"; then
+      log_error "Ok, exiting - you need to either remove existing state store bucket or change state store name by setting env var FRUSTER_KOPS_STATE_STORE"
+      exit 1    
+    fi    
+    
+    log_success "Step ${1:-} completed: Existing state store bucket ${KOPS_STATE_STORE_NAME} is used"
+  else    
+    aws s3api create-bucket --bucket ${KOPS_STATE_STORE_NAME} --region us-east-1 &> /dev/null || (log_error "Failed creating state store bucket '${KOPS_STATE_STORE_NAME}', probably because bucket already exist or due to invalid permissions" && exit 1)
+    aws s3api put-bucket-versioning --bucket ${KOPS_STATE_STORE_NAME}  --versioning-configuration Status=Enabled
+	  
+    log_success "Step ${1:-} completed: State store bucket ${KOPS_STATE_STORE_NAME} created"
+  fi	
 }
 
 kopsCreateCluster() {
-	log_info "Creating cluster resources using kops..."	
+  cat << EOF
+  
+------------------------------
+> Step ${1:-}: Creating the cluster
+------------------------------
+
+During this step the actual installation will happen.
+
+The configuration will first be written to the kops state store and then applied so kops may create
+all necessary resources on AWS.
+
+EOF
 
 	kops create cluster \
 	    --ssh-public-key ${SSH_KEY} \
@@ -120,22 +170,16 @@ kopsCreateCluster() {
 	    --yes \
 	    $KOPS_CLUSTER_NAME
 
-	log_success "Finished creating kops cluster"
+	log_success "Step ${1:-} completed: Finished creating kops cluster"
 }
 
 setVars() {
-  if [ -z "$1" ]
-  then
-    log_error "Missing cluster name"
-    exit 1
-  fi
-
 	if [[ "$1" != *.k8s.local ]]
 	then
-		log_info "Will change cluster name to ${1}.k8s.local (suffix .k8s.local is required for kops to create a cluster with Gossip enabled)"
-	    KOPS_CLUSTER_NAME=${1}.k8s.local	    
+		log_info "Changing cluster name to ${1}.k8s.local (suffix .k8s.local is required for kops to create a cluster with Gossip enabled)"
+	  KOPS_CLUSTER_NAME=${1}.k8s.local	    
 	else
-	    KOPS_CLUSTER_NAME=${1}	    
+	  KOPS_CLUSTER_NAME=${1}	    
 	fi
 
 	if [ -z "${FRUSTER_KOPS_STATE_STORE:-}" ]; then
@@ -152,6 +196,7 @@ setVars() {
 
 
 	cat << EOF
+
 About to create cluster with following properties:
 
 Cluster name:       ${KOPS_CLUSTER_NAME}
@@ -164,18 +209,27 @@ AWS zone:           ${AWS_ZONE}
 SSH key:            ${SSH_KEY:-None is set, will be created}
 EOF
 
-	read -p "Does this seem right (y/n)? " choice
-	case "$choice" in 
-	  y|Y ) ;;
-	  n|N ) exit 0;;
-	  * ) { echo "Invalid choice"; exit 1; };;
-	esac
+  echo ""
+
+  if promptDefaultYes "Is this correct"; then
+    exit 0
+  fi	
 }
 
 createBastion() {
-  log_info "Creating bastion host..."
-  log_debug "Note that this should be done by setting --bastion flag in during kops cluster creation but due to this issue https://github.com/kubernetes/kops/issues/2881 we cannot do that at the moment"
+  cat << EOF
   
+------------------------------
+> Step ${1:-}: Create Bastion host
+------------------------------
+
+Creates a Bastion host for the cluster.
+
+Note that this should be done by setting --bastion flag in during kops cluster creation but this
+cannot be done due to this issue https://github.com/kubernetes/kops/issues/2881, once fixed this can
+be simplified.
+
+EOF  
   kops create instancegroup bastions \
     --role Bastion \
     --subnet utility-${AWS_ZONE} \
@@ -187,26 +241,30 @@ createBastion() {
     --state s3://${KOPS_STATE_STORE_NAME} \
     --yes
  
-  log_success "Bastion was created"    
+  log_success "Step ${1:-} completed: Bastion was created"    
 }
 
 showPostCreateInfo() {
   cat << EOF
-Congrat, cluster was successfully created.
+
+-----------------------------------
+Congrats, cluster is being created!
+-----------------------------------
+
+IMPORTANT! Your cluster is probably not yet initialized, this takes a couple of minutes now! 
+
+Validate cluster state by running this command a couple of times to see that nodes and pods 
+transitions into ready state:
+
+  kops validate cluster --state s3://${KOPS_STATE_STORE_NAME}
 
 Here are some commands that may come in handy:
 
-# Validate cluster, you should run this now to see that node eventually will get in ready state
-kops validate cluster --state s3://${KOPS_STATE_STORE_NAME}
+  # Delete cluster (this will undo everything you just created but not remove SSH key)
+  kops delete cluster ${KOPS_CLUSTER_NAME} --state s3://${KOPS_STATE_STORE_NAME} --yes
 
-# Delete cluster (this will undo everything you just created but not remove SSH key)
-kops delete cluster ${KOPS_CLUSTER_NAME} --state s3://${KOPS_STATE_STORE_NAME} --yes
-
-# Connect to bastion
-ssh -i ${SSH_KEY_PRIV:-your-private-key} admin@$(aws elb --output=json describe-load-balancers |jq -r .LoadBalancerDescriptions[].DNSName |grep bastion-${KOPS_STATE_STORE_NAME:0:15})
-
-IMPORTANT! Your cluster is probably not yet initialized by now, please run the validate cluster command
-a couple of times until cluster and all nodes are in ready state
+  # Connect to bastion
+  ssh -i ${SSH_KEY_PRIV:-your-private-key} admin@$(aws elb --output=json describe-load-balancers |jq -r .LoadBalancerDescriptions[].DNSName |grep bastion-${KOPS_STATE_STORE_NAME:0:15})
 
 EOF
 }
@@ -236,14 +294,19 @@ while getopts ":fvzhk:c:" opt; do
 	shift $(expr $OPTIND - 1 )
 done
 
+if [ -z ${1:-} ]
+	then
+    usage    
+fi
+
 setVars ${1:-""}
 
-validateDeps
-validateAws
-validateSshKey
+validateDeps 1
+validateAws 2
+configureSshKey 3
 
-createStateStore
-kopsCreateCluster
-createBastion
+createStateStore 4
+kopsCreateCluster 5
+createBastion 6
 
 showPostCreateInfo
