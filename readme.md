@@ -17,7 +17,7 @@ installation at smooth as possible.
 ## Installation
 
 ```
-TODO: curl http://domain/path/to/script.sh | bash -s arg1 arg2
+curl https://raw.githubusercontent.com/FrostDigital/fruster-scripts/master/install/fruster-install.sh | bash -s
 ```	
 
 ## `fruster-create-kube`
