@@ -5,19 +5,22 @@
 # 
 # This script installs to /usr/local only.
 
-mkdir -p /usr/local/fruster && cd /usr/local/fruster
+TARGET_DIR=/usr/local/fruster
+BIN_DIR=/usr/local/bin
 
-git clone --depth 1 https://github.com/FrostDigital/fruster-scripts.git
+mkdir -p $TARGET_DIR
+
+git clone --depth 1 https://github.com/FrostDigital/fruster-scripts.git $TARGET_DIR
 
 # Remove old versions
-rm -f /usr/local/bin/fruster-create-kube
-rm -f /usr/local/bin/fruster-install-deis
-rm -f /usr/local/bin/fruster-install-nats
+rm -f $BIN_DIR/fruster-create-kube
+rm -f $BIN_DIR/fruster-install-deis
+rm -f $BIN_DIR/fruster-install-nats
 
 # Link binaries into /usr/local/bin
-ln -s scripts/fruster-create-kube /usr/local/bin/fruster-create-kube
-ln -s scripts/fruster-install-deis /usr/local/bin/fruster-install-deis
-ln -s scripts/fruster-install-nats /usr/local/bin/fruster-install-nats
+ln -s $TARGET_DIR/scripts/fruster-create-kube $BIN_DIR/fruster-create-kube
+ln -s $TARGET_DIR/scripts/fruster-install-deis $BIN_DIR/fruster-install-deis
+ln -s $TARGET_DIR/scripts/fruster-install-nats $BIN_DIR/fruster-install-nats
 
 
 
