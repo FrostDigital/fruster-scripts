@@ -21,7 +21,7 @@ DEBUG=0
 if [ -f "./shared/utils" ] ; then
   source ./shared/utils
 else 
-  source /usr/local/fruster/shared/utils
+  source /usr/local/fruster/scripts/shared/utils
 fi
 
 usage () {
