@@ -8,6 +8,7 @@
 TARGET_DIR=/usr/local/fruster
 BIN_DIR=/usr/local/bin
 
+rm -rf $TARGET_DIR
 mkdir -p $TARGET_DIR
 
 git clone --depth 1 https://github.com/FrostDigital/fruster-scripts.git $TARGET_DIR
