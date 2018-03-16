@@ -17,7 +17,11 @@ set -o pipefail
 
 DEBUG=0
 
-source ./shared/utils
+if [ -f "./shared/utils" ] ; then
+  source ./shared/utils
+else 
+  source /usr/local/fruster/shared/utils
+fi
 
 usage () {
 	cat << EOF

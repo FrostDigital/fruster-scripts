@@ -17,7 +17,7 @@ installation at smooth as possible.
 ## Installation
 
 ```
-curl https://raw.githubusercontent.com/FrostDigital/fruster-scripts/master/install/fruster-install.sh | bash -s
+curl https://raw.githubusercontent.com/FrostDigital/fruster-scripts/master/install/fruster-install.sh | sudo bash
 ```	
 
 ## `fruster-create-kube`
