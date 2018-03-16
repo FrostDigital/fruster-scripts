@@ -25,7 +25,7 @@ fi
 
 usage () {
 	cat << EOF
-Usage: $0 -option [DEIS DEPLOYMENT NAME]
+Usage: fruster-install-deis -option [DEIS DEPLOYMENT NAME]
 
 Installs Deis Workflow onto an existing Kubernetes Cluster in order to run a fruster project.
 

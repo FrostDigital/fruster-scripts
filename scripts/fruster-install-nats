@@ -25,13 +25,13 @@ fi
 
 usage () {
 	cat << EOF
-Usage: $0 -option [HOSTNAME]
+Usage: fruster-install-nats -option [HOSTNAME]
 
 Installs NATS on an existing kubernetes cluster. 
 
 OPTIONS:
-  -n          kubernetes namespace where nats will be installed
-  -v          verbose logging
+  -n      kubernetes namespace where nats will be installed
+  -v      verbose logging
   -h 		  show this message
   -r		  num replicas, defaults to 3  
 

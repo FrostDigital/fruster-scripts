@@ -26,7 +26,7 @@ fi
 
 usage () {
 	cat << EOF
-Usage: $0 -option [CLUSTER NAME]
+Usage: fruster-create-kube -option [CLUSTER NAME]
 
 Creates a production grade Kubernetes cluster on AWS. 
 

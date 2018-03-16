@@ -6,7 +6,7 @@ This repo contains scripts for:
 * Installing tools and software onto the cluster:
 	* Helm
 	* Deis
-	* NATS bus
+	* NATS
 
 The goal is to, instead of documentation, provide an automatated way of creating a production grade
 environment following best practises learnt during the last two years of working with Fruster.
@@ -32,6 +32,12 @@ Run `fruster-create-kube -h` for usage and configuration options.
 Script to install Deis Workflow onto an existing Kubernetes Cluster on AWS.
 
 Run `fruster-install-deis -h` for usage and configuration options.
+
+## `fruster-install-nats`
+
+Script to install NATS onto an existing Kubernetes Cluster on AWS.
+
+Run `fruster-install-nats -h` for usage and configuration options.
 
 
 
