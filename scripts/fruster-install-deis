@@ -27,7 +27,7 @@ usage () {
 	cat << EOF
 Usage: fruster-install-deis -option [DEIS ROUTER FQDN]
 
-Installs Deis Workflow onto an existing Kubernetes Cluster.
+Installs Deis Workflow onto an existing Kubernetes cluster.
 
 Note the following prerequisites:
 
@@ -77,58 +77,6 @@ EOF
   log_success "Step completed: Binary dependency checks passed"
 }
 
-installDeis() {
-  cat << EOF
-  
--------------------------
-> Install Deis on cluster
--------------------------
-
-This step will perform the actual installation onto the Kuberentes Cluster.
-
-EOF
-  # Add deis
-  helm repo add deis https://charts.deis.com/workflow
-
-  # Save Deis chart values to a temp location
-  tempDir=$(mktemp -d)
-  values=${tempDir}/tempDir.yaml
-  helm inspect values deis/workflow | sed -n '1!p' > ${values}
-
-  log_debug "Saving deis chart values into ${values}"
-
-  yawn set ${values} global.storage "s3"
-  yawn set ${values} s3.region "eu-west-1"
-  yawn set ${values} s3.accesskey ${DEIS_AWS_ACCESS_KEY_ID}
-  yawn set ${values} s3.secretkey ${DEIS_AWS_SECRET_ACCESS_KEY}
-  yawn set ${values} s3.registry_bucket ${DEIS_REGISTRY_BUCKET}
-  yawn set ${values} s3.builder_bucket ${DEIS_BUILDER_BUCKET}
-
-  yawn set ${values} global.database_location "off-cluster"
-  yawn set ${values} database.postgres.name "${DEIS_POSTGRES_DB}"
-  yawn set ${values} database.postgres.username "${DEIS_POSTGRES_USER}"
-  yawn set ${values} database.postgres.password "${DEIS_POSTGRES_PASSWORD}"
-  yawn set ${values} database.postgres.host "${DEIS_POSTGRES_HOST}"
-  yawn set ${values} database.postgres.port \'"${DEIS_POSTGRES_PORT}"\'
-  yawn set ${values} global.use_cni "true"
-  yawn set ${values} global.grafana_location "off-cluster"
-  yawn set ${values} global.influxdb_location "off-cluster"
-  
-  helm install deis/workflow --namespace deis --name deis -f ${values}
-
-  sleep 10
-
-  # Removes deis.monitor since we do not need that
-  kubectl -n deis delete ds deis-monitor-telegraf
-
-  log_success "Step ${1:-} completed: Deis is now being installed"
-
-  # TODO: Annotate controller
-  # TODO: Create initial user
-  # TODO: Update DNS
-  # TODO: Update ELB listener so it terminates SSL
-}
-
 installPostgres() {
   cat << EOF
 
@@ -137,19 +85,19 @@ installPostgres() {
 -----------------------
 
 Deis uses a postgres database to save app config, users, etc. You can choose to run this database either on 
-the kube cluster or on other location outside of cluster. 
+the kube cluster or on other location outside of cluster.
 
 EOF
 
 	read -p "Do you want to postgres on-cluster or off-cluster (On/off)? " choice
 
 	case "$choice" in 
-		on|On|"") FRUSTER_ON_CLUSTER_POSTGRES=1;;
-	  off|Off) FRUSTER_ON_CLUSTER_POSTGRES=0;;
+		on|On|"") onClusterPostgres=1;;
+	  off|Off) onClusterPostgres=0;;
 	  * ) { echo "Invalid choice"; exit 1; };;
 	esac
 
-  if [ $FRUSTER_ON_CLUSTER_POSTGRES == 1 ] ; then
+  if [ $onClusterPostgres == 1 ] ; then
 
     # Check if postgres is already installed
     if helm ls |grep -q postgres ; then
@@ -157,44 +105,46 @@ EOF
       exit 1
     fi
 
-    read -p "Choose a username for postgres deis user (default 'deis'): " DEIS_POSTGRES_USER
-    DEIS_POSTGRES_USER=${DEIS_POSTGRES_USER:-deis}
+    read -p "Choose a username for postgres deis user (default 'deis'): " postgresUser
+    postgresUser=${postgresUser:-deis}
 
-    DEFAULT_PASSWORD=$(openssl rand -base64 32)
+    # Generate a random string that will be used as default password in case
+    # user does not want to come up with one him/herself
+    defaultPassword=$(openssl rand -base64 32)
 
-    read -p "Choose a password for postgres deis user (default '${DEFAULT_PASSWORD}'): " DEIS_POSTGRES_PASSWORD
-    DEIS_POSTGRES_PASSWORD=${DEIS_POSTGRES_PASSWORD:-$DEFAULT_PASSWORD}    
+    read -p "Choose a password for postgres deis user (default '${defaultPassword}'): " postgresPassword
+    postgresPassword=${postgresPassword:-$defaultPassword}    
     
-    if [ ${#DEIS_POSTGRES_PASSWORD} -lt 8 ] ; then
+    if [ ${#postgresPassword} -lt 8 ] ; then
       echo "Password needs to be more than 8 chars"
       exit 1    
     fi
     
     helm install --name postgres \
       --namespace deis-postgres \
-      --set postgresUser=deis,postgresPassword=${DEIS_POSTGRES_PASSWORD} \
+      --set postgresUser=deis,postgresPassword=${postgresPassword} \
       stable/postgresql
 
-    DEIS_POSTGRES_HOST=postgres-postgresql.deis-postgres.svc.cluster.local
-    DEIS_POSTGRES_PORT=5432
-    DEIS_POSTGRES_DB=deis
+    postgresHost=postgres-postgresql.deis-postgres.svc.cluster.local
+    postgresPort=5432
+    postgresDb=deis
   else 
-    read -p "Enter postgres host (without port): " DEIS_POSTGRES_HOST
-    read -p "Enter postgres port: " DEIS_POSTGRES_PORT
-    read -p "Enter username for off-cluster postgres user (default 'deis'): " DEIS_POSTGRES_USER
-    DEIS_POSTGRES_USER=${DEIS_POSTGRES_USER:-deis}
-    read -p "Enter name of database (default 'deis'): " DEIS_POSTGRES_DB
-    DEIS_POSTGRES_DB=${DEIS_POSTGRES_DB:-deis}
-    read -p "Enter password for off-cluster postgres: " DEIS_POSTGRES_PASSWORD   
+    read -p "Enter postgres host (without port): " postgresHost
+    read -p "Enter postgres port: " postgresPort
+    read -p "Enter username for off-cluster postgres user (default 'deis'): " postgresUser
+    postgresUser=${postgresUser:-deis}
+    read -p "Enter name of database (default 'deis'): " postgresDb
+    postgresDb=${postgresDb:-deis}
+    read -p "Enter password for off-cluster postgres: " postgresPassword   
   fi
 
   log_info "Postgres is configured/installed with following configuration:"
   
-  echo "Host: $DEIS_POSTGRES_HOST"
-  echo "Port: $DEIS_POSTGRES_PORT"
-  echo "Database: $DEIS_POSTGRES_DB"
-  echo "User: $DEIS_POSTGRES_USER"
-  echo "Password: $DEIS_POSTGRES_PASSWORD"
+  echo "Host: $postgresHost"
+  echo "Port: $postgresPort"
+  echo "Database: $postgresDb"
+  echo "User: $postgresUser"
+  echo "Password: $postgresPassword"
 
   log_success "Step completed"
 }
@@ -212,47 +162,21 @@ load balancer and since we are using AWS we want to use AWS Certificate Manager 
 The cert needs to be a wildcard cert for domain from previous step, but it may also contain more domain names if
 other domains will point to deis.
 
-This step will list all certificates that exists in you AWS account and enter ARN of the one that has support for ${DEIS_FQDN}.
+This step will list all certificates that exists in you AWS account and enter ARN of the one that has support for ${deisFqdn}.
 
 EOF
 
   aws acm list-certificates --certificate-status ISSUED PENDING_VALIDATION  |jq -r '.CertificateSummaryList[] | "\(.CertificateArn)\t\(.DomainName)"'
   echo ""
-  read -p "Enter ARN of SSL certificate to use: " SSL_CERT_ARN
+  read -p "Enter ARN of SSL certificate to use: " sslCertArn
   
-  if aws acm describe-certificate --certificate-arn ${SSL_CERT_ARN} | jq -r .Certificate.SubjectAlternativeNames | grep -q $DEIS_FQDN ; then
+  if aws acm describe-certificate --certificate-arn ${sslCertArn} | jq -r .Certificate.SubjectAlternativeNames | grep -q $deisFqdn ; then
     log_success "Step completed: SSL cert seems ok"
   else
-    log_error "Could not find SSL cert that matches domain ${DEIS_FQDN}"
+    log_error "Could not find SSL cert that matches domain ${deisFqdn}"
     exit 1
   fi
 }
-
-# configureDns() {
-#   cat << EOF
-
-# ------------------------
-# > Step ${1:-}: Configure DNS
-# ------------------------
-
-# Deis will during installation create a public facing load balancer that receieves HTTP(s) traffic. The load balancer
-# routes traffic to Deis Router which in turn will route it to the corresponding deis app mapped by domain name.
-
-# To achieve this the load balancer needs a wildcard CNAME record, for example *.c1.fruster.se which will set in 
-# a later stage during the installation.
-
-# EOF
-
-#   read -p "Enter deis router domain (for example c1.fruster.se): " DEIS_FQDN
-#   # NUM_NS_RECORDS=$(dig +short NS $DEIS_FQDN |wc -l)
-
-#   # if (( $NUM_NS_RECORDS < 3 )) ; then
-#   #   log_error "Failed to validate NS records of ${DEIS_FQDN}, make sure that ${DEIS_FQDN} has nameservers set, check by running 'dig NS $DEIS_FQDN'"
-#   #   exit 1 
-#   # fi
-
-#   log_success "Step ${1:-} completed: DNS set to ${DEIS_FQDN}"
-# }
 
 createBucketIfNotAlreadyExisting() {
     createResponse=$(aws s3 mb s3://${1} 2>&1 ||true)
@@ -266,7 +190,6 @@ createBucketIfNotAlreadyExisting() {
     else
         log_success "Bucket $1 created"
     fi
-
 }
 
 createDeisBuckets() {
@@ -285,15 +208,15 @@ Note that this step will not fail if buckets already exists.
 
 EOF
     # Deis gets confused if there are dots bucket names, replace with dash
-    DEIS_FQDN_WO_DOTS="${DEIS_FQDN//\./-}"
+    deisFqdnWoDots="${deisFqdn//\./-}"
 
-    DEIS_BUILDER_BUCKET=${DEIS_FQDN_WO_DOTS}-builder
-    DEIS_REGISTRY_BUCKET=${DEIS_FQDN_WO_DOTS}-registry
+    deisBuilderBucket=${deisFqdnWoDots}-builder
+    deisRegistryBucket=${deisFqdnWoDots}-registry
 
-    createBucketIfNotAlreadyExisting $DEIS_BUILDER_BUCKET
-    createBucketIfNotAlreadyExisting $DEIS_REGISTRY_BUCKET
+    createBucketIfNotAlreadyExisting $deisBuilderBucket
+    createBucketIfNotAlreadyExisting $deisRegistryBucket
 
-    log_success "Step completed: Buckets has been created"
+    log_success "\nStep completed: Buckets has been created"
 }
 
 configureDeisAws() {
@@ -307,44 +230,100 @@ Deis needs access to AWS in order to save and retrieve content to S3.
 
 This user should ideally only have read/write access to Deis buckets:
 
-* ${DEIS_BUILDER_BUCKET}
-* ${DEIS_REGISTRY_BUCKET}
+* ${deisBuilderBucket}
+* ${deisRegistryBucket}
 
 EOF
-    read -p "Enter AWS Access Key (example AKIAJ2DDWYQ2P1Q5CWYA): " DEIS_AWS_ACCESS_KEY_ID
-    read -p "Enter AWS Secret Key: " DEIS_AWS_SECRET_ACCESS_KEY
+  
+  read -p "Enter AWS Access Key (example AKIAJ2DDWYQ2P1QXXXXX): " deisAwsAccessKeyId
+  read -p "Enter AWS Secret Key: " deisAwsSecretAccessKey
 
-    # Temporarily switch current access key and secret to above ones
-    # to try them out
-    OLD_AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
-    OLD_AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
-    
-    export AWS_ACCESS_KEY_ID=$DEIS_AWS_ACCESS_KEY_ID
-    export AWS_SECRET_ACCESS_KEY=$DEIS_AWS_SECRET_ACCESS_KEY
+  # Temporarily switch current access key and secret to above ones
+  # to try them out
+  OLD_AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+  OLD_AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+  
+  export AWS_ACCESS_KEY_ID=$deisAwsAccessKeyId
+  export AWS_SECRET_ACCESS_KEY=$deisAwsSecretAccessKey
 
-    set +o errexit
+  set +o errexit
 
-    if aws s3api head-bucket --bucket ${DEIS_BUILDER_BUCKET} && aws s3api head-bucket --bucket ${DEIS_REGISTRY_BUCKET};
-    then
-      log_success "Step completed"
-    else
-      log_error "Cannot access deis bucket(s) with provided AWS Access Key and Secret"
-      exit 1
-    fi    
+  if aws s3api head-bucket --bucket ${deisBuilderBucket} && aws s3api head-bucket --bucket ${deisRegistryBucket};
+  then
+    log_success "Step completed"
+  else
+    log_error "Cannot access deis bucket(s) with provided AWS Access Key and Secret"
+    exit 1
+  fi    
 
-    # Set keys back to what is was
+  if [ -z $OLD_AWS_ACCESS_KEY_ID ]; then
+    # Env vars was not used before, so nothing to reset, just remove AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+    # so they wont interfer with further aws cli invocations
+    unset AWS_ACCESS_KEY_ID
+    unset AWS_SECRET_ACCESS_KEY
+  else  
+    # Set keys back to what they were
     export AWS_ACCESS_KEY_ID=$OLD_AWS_ACCESS_KEY_ID
     export AWS_SECRET_ACCESS_KEY=$OLD_AWS_SECRET_ACCESS_KEY
+  fi
 
-    set -o errexit 
+  set -o errexit 
 }
 
-configureLoadBalancer() {
+installDeis() {
+  cat << EOF
+  
+-------------------------
+> Install Deis on cluster
+-------------------------
+
+This step will perform the actual installation of Deis onto your Kubernetes Cluster.
+
+Be patient, this may take a couple of minutes.
+
+EOF
+  # Add deis
+  helm repo add deis https://charts.deis.com/workflow
+
+  # Save Deis chart values to a temp location
+  values=${tempDir}/values.yaml
+  helm inspect values deis/workflow | sed -n '1!p' > ${values}
+
+  log_debug "Saving deis chart values into ${values}"
+
+  yawn set ${values} global.storage "s3"
+  yawn set ${values} s3.region "eu-west-1"
+  yawn set ${values} s3.accesskey ${deisAwsAccessKeyId}
+  yawn set ${values} s3.secretkey ${deisAwsSecretAccessKey}
+  yawn set ${values} s3.registry_bucket ${deisRegistryBucket}
+  yawn set ${values} s3.builder_bucket ${deisBuilderBucket}
+
+  yawn set ${values} global.database_location "off-cluster"
+  yawn set ${values} database.postgres.name "${postgresDb}"
+  yawn set ${values} database.postgres.username "${postgresUser}"
+  yawn set ${values} database.postgres.password "${postgresPassword}"
+  yawn set ${values} database.postgres.host "${postgresHost}"
+  yawn set ${values} database.postgres.port \'"${postgresPort}"\'
+  yawn set ${values} global.use_cni "true"
+  yawn set ${values} global.grafana_location "off-cluster"
+  yawn set ${values} global.influxdb_location "off-cluster"
+  
+  helm install deis/workflow --namespace deis --name deis -f ${values}
+
+  sleep 10
+
+  # Removes deis.monitor since we do not need that
+  kubectl -n deis delete ds deis-monitor-telegraf
+
+  log_success "Step ${1:-} completed: Deis is now being installed"
+}
+
+configureLoadBalancerSsl() {
   cat << EOF
 
-------------------------------
-> Configure Deis Load Balancer
-------------------------------
+----------------------------------
+> Configure Deis Load Balancer SSL
+----------------------------------
 
 Deis created a load balancer (a ELB) during installation.
 
@@ -353,6 +332,110 @@ from AWS Certififace Manager.
 
 EOF
 
+  loadBalancerJson=$(aws elb describe-load-balancers |jq ".LoadBalancerDescriptions[] | select(.DNSName == \"${deisElbHostName}\")")
+  loadBalancerName=$(echo $loadBalancerJson|jq -r .LoadBalancerName)
+
+  # Get current internal port (a.k.a. instance port) that load balancer uses for HTTP 
+  # we need this for out SSL listener since the ELB will terminate SSL and hence pass on regular HTTP traffic
+  httpInstancePort=$(echo $loadBalancerJson |jq ".ListenerDescriptions[] | select(.Listener.LoadBalancerPort == 80).Listener.InstancePort")
+    
+  # Remove existing 443 listener since aws cli doesn't seem to allow to update existing one
+  aws elb delete-load-balancer-listeners --load-balancer-name $loadBalancerName --load-balancer-ports 443
+
+  # Now re-create it
+  aws elb create-load-balancer-listeners --load-balancer-name $loadBalancerName --listeners "Protocol=SSL,LoadBalancerPort=443,InstanceProtocol=TCP,InstancePort=${httpInstancePort},SSLCertificateId=${sslCertArn}"
+
+  log_success "Step completed: Load balancers listener for SSL was updated and associated with certificates ${sslCertArn}"
+}
+
+configureLoadBalancerDns() {
+  cat << EOF
+
+----------------------------------
+> Configure Deis Load Balancer DNS
+----------------------------------
+
+Point all traffic from *.${deisFqdn} to Deis loadbalancer which in turn will forward
+traffic to deis router.
+
+EOF
+
+  if promptDefaultYes "Do you want to create a wildcard CNAME record for ${deisFqdn} that points to deis load balancerELB (note that this requires that route53 hosts DNS for ${deisFqdn})"; then
+    log_success: "Step completed: Nothing todo"
+  else
+    # Get hostname of ELB that deis created
+    deisElbHostName=$(kubectl -n deis get svc deis-router -o json |jq -r .status.loadBalancer.ingress[].hostname)
+
+    if [ -z $deisElbHostName ]; then
+      log_error "Could not get hostname of deis load balancer, this could be that deis has not completed installation onto your cluster"
+      exit 1      
+    fi
+
+    # Get id of hosted zone for domain
+
+    # 1) Attempt to get exact match where a host zone exists for $deisFqdn
+    route53HostedZoneId=$(aws route53 list-hosted-zones |jq -r ".HostedZones[] | select(.Name==\"${deisFqdn}.\").Id")
+
+    if [ -z $route53HostedZoneId ]; then
+      # 2) No match, try to get hosted zone of root domain, i.e. if deisFqdn is foo.bar.com, then check if bar.com exists
+      # TODO: I don't think this support sub-subdomains /JS
+
+      deisFqdnRoot=${deisFqdn#[[:alpha:]]*.}
+      route53HostedZoneId=$(aws route53 list-hosted-zones |jq -r ".HostedZones[] | select(.Name==\"${deisFqdnRoot}.\").Id")
+    fi
+
+    if [ -z $route53HostedZoneId ]; then
+      log_error "Failed configuring DNS, could not find hosted zone in Route53 for ${deisFqdn}"
+      exit 1
+    fi
+
+    # Extract id part from string that looks like /hostedzone/THIS_IS_THE_ID
+    route53HostedZoneId=${route53HostedZoneId##*/} 
+
+    tempRecordSetFile=${tempDir}/deis-elb-rset.json
+    cat>${tempRecordSetFile}<<END
+{
+    "Changes": [
+        {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+                "Name": "*.${deisFqdn}.",
+                "Type": "CNAME",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "${deisElbHostName}"
+                    }
+                ]
+            }
+        }
+    ]
+}
+END
+    
+    aws route53 change-resource-record-sets --hosted-zone-id $route53HostedZoneId --change-batch file://${tempRecordSetFile}
+
+    log_success "Step completed: Updated hosted zone ${route53HostedZoneId} to point *.${deisFqdn} -> ${deisElbHostName}"
+  fi
+}
+
+postInstallConfig() {
+  cat << EOF
+
+--------------------------------
+> Post install config and tweaks
+--------------------------------
+
+Performs tweaks of deis installation after it has been installed onto cluster.
+
+EOF
+ 	read -p "What is the max body size of HTTP requests that the router should handle (press enter for '50m')? " maxBodySize
+  kubectl --namespace=deis annotate deployment/deis-router router.deis.io/nginx.bodySize="${maxBodySize:-50m}"
+  
+ 	read -p "How many replicas of deis router should run (press enter for '2')?" numRouterReplicas
+  kubectl --namespace=deis scale --replicas=${numRouterReplicas:-2} deployment/deis-router
+
+  log_success "Step completed"
 }
 
 showPostCreateInfo() {
@@ -362,7 +445,7 @@ showPostCreateInfo() {
 Congrats, the installation process is finished!
 -----------------------------------------------
 
-It may a couple of minutes until all deis pods are started. Check progress by running:
+It may a couple of minutes until all deis pods are started and ready. Check progress by running:
 
   kubectl -n deis get po
 
@@ -382,16 +465,13 @@ Once the output is something like this, deis is up and running:
   deis-router-588f4c9587-j5dq5             1/1       Running   0          3m
   deis-workflow-manager-645dd44f9d-md6ld   1/1       Running   0          3m
 
-Next steps:
+Now, lets register yourself on deis by running:
 
-1. Point *.${DEIS_FQDN} to Deis's newly created load balancer $(kubectl -n deis get svc deis-router -o json |jq -r .status.loadBalancer.ingress[].hostname)
+  deis register https://deis.${deisFqdn}
 
-2. Add SSL cert to Deis load balancer.
+In case you want to revert the installation, run:
 
-3. Create the first admin user and add other users if necessary
-
-4. Consider changing max size of requests that deis router allows by running:
-kubectl --namespace=deis annotate deployment/deis-router router.deis.io/nginx.bodySize="50m"
+    helm delete deis --purge; helm delete postgres --purge; kubectl delete ns deis
 
 EOF
 }
@@ -425,21 +505,26 @@ if [ -z ${1:-} ]
 then
     usage    
 else
-    DEIS_FQDN=$1
+    deisFqdn=$1
 fi
+
+tempDir=$(mktemp -d)
 
 validateDeps
 validateAws
 validateCluster
 validateCert
 
-createDeisBuckets $DEIS_FQDN
+createDeisBuckets $deisFqdn
 configureDeisAws
 
 installHelm
 installPostgres
 installDeis
 
-configureLoadBalancer
+configureLoadBalancerDns
+configureLoadBalancerSsl
+
+postInstallConfig
 
 showPostCreateInfo
