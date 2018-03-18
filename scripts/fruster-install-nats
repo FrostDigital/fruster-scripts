@@ -37,8 +37,8 @@ OPTIONS:
 
 EXAMPLES:
 
-# Install NATS with namespace "paceup"
-$0 -n paceup
+	# Install NATS with namespace "paceup"
+	fruster-install-nats -n paceup
 
 EOF
 	exit

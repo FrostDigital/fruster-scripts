@@ -156,8 +156,10 @@ kopsCreateCluster() {
 
 During this step the actual installation will happen.
 
-The configuration will first be written to the kops state store and then applied so kops may create
+Configuration will first be written to kops state store and then applied so kops may create
 all necessary resources on AWS.
+
+Be patient, this may take 5-10 minutes.
 
 EOF
 

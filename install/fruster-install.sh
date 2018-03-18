@@ -17,11 +17,13 @@ git clone --depth 1 https://github.com/FrostDigital/fruster-scripts.git $TARGET_
 rm -f $BIN_DIR/fruster-create-kube
 rm -f $BIN_DIR/fruster-install-deis
 rm -f $BIN_DIR/fruster-install-nats
+rm -f $BIN_DIR/fruster-switch
 
 # Link binaries into /usr/local/bin
 ln -s $TARGET_DIR/scripts/fruster-create-kube $BIN_DIR/fruster-create-kube
 ln -s $TARGET_DIR/scripts/fruster-install-deis $BIN_DIR/fruster-install-deis
 ln -s $TARGET_DIR/scripts/fruster-install-nats $BIN_DIR/fruster-install-nats
+ln -s $TARGET_DIR/scripts/fruster-switch $BIN_DIR/fruster-switch
 
 
 
