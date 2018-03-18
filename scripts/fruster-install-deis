@@ -102,7 +102,6 @@ EOF
   yawn set ${values} s3.accesskey ${DEIS_AWS_ACCESS_KEY_ID}
   yawn set ${values} s3.secretkey ${DEIS_AWS_SECRET_ACCESS_KEY}
   yawn set ${values} s3.registry_bucket ${DEIS_REGISTRY_BUCKET}
-  yawn set ${values} s3.database_bucket ${DEIS_DB_BUCKET}
   yawn set ${values} s3.builder_bucket ${DEIS_BUILDER_BUCKET}
 
   yawn set ${values} global.database_location "off-cluster"
@@ -280,19 +279,18 @@ createDeisBuckets() {
 Deis uses S3 buckets to save state off cluster, so three buckets needs to be created:
 
 * Deis builder
-* Deis db (TODO: This might not be needed, verify that!)
 * Deis registry
 
 Note that this step will not fail if buckets already exists. 
 
 EOF
+    # Deis gets confused if there are dots bucket names, replace with dash
+    DEIS_FQDN_WO_DOTS="${DEIS_FQDN//\./-}"
 
-    DEIS_BUILDER_BUCKET=${1}-builder
-    DEIS_DB_BUCKET=${1}-database
-    DEIS_REGISTRY_BUCKET=${1}-registry
+    DEIS_BUILDER_BUCKET=${DEIS_FQDN_WO_DOTS}-builder
+    DEIS_REGISTRY_BUCKET=${DEIS_FQDN_WO_DOTS}-registry
 
     createBucketIfNotAlreadyExisting $DEIS_BUILDER_BUCKET
-    createBucketIfNotAlreadyExisting $DEIS_DB_BUCKET
     createBucketIfNotAlreadyExisting $DEIS_REGISTRY_BUCKET
 
     log_success "Step completed: Buckets has been created"
@@ -310,7 +308,6 @@ Deis needs access to AWS in order to save and retrieve content to S3.
 This user should ideally only have read/write access to Deis buckets:
 
 * ${DEIS_BUILDER_BUCKET}
-* ${DEIS_DB_BUCKET}
 * ${DEIS_REGISTRY_BUCKET}
 
 EOF
@@ -434,7 +431,6 @@ fi
 validateDeps
 validateAws
 validateCluster
-#configureDns
 validateCert
 
 createDeisBuckets $DEIS_FQDN
