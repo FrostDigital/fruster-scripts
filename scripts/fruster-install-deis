@@ -25,16 +25,22 @@ fi
 
 usage () {
 	cat << EOF
-Usage: fruster-install-deis -option [DEIS DEPLOYMENT NAME]
+Usage: fruster-install-deis -option [DEIS ROUTER FQDN]
 
-Installs Deis Workflow onto an existing Kubernetes Cluster in order to run a fruster project.
+Installs Deis Workflow onto an existing Kubernetes Cluster.
 
 Note the following prerequisites:
 
-* A DNS zone for deis base domain must exit (a NS record with nameservers must be set)
 * A wildcard certificate for the domain must exist in AWS Certificate Manager
+* ...anything more?
 
-Both prerequisites will be validated during installation.
+Prerequisites will be validated during installation.
+
+Assumptions this installation takes:
+
+* We do not use deis monitoring, hence this is removed during installation
+* SSL is terminated at the ELB, not by deis router
+* SSL certificate is requried to exist in AWS Certificate Manager
 
 OPTIONS:
   -k      public ssh key used to access nodes, a new one will be created if none set
@@ -43,8 +49,8 @@ OPTIONS:
 
 EXAMPLES:
 
-# Create new cluster with default options
-$0 c1
+  # Create new cluster with default options
+  fruster-install-deis c1
 
 EOF
 	exit
@@ -54,11 +60,11 @@ EOF
 validateDeps() {
   cat << EOF
   
----------------------------
-> Step ${1:-}: Validate binaries
----------------------------
+-------------------
+> Validate binaries
+-------------------
 
-Validate that all requried binaries needed for this installation is present and executable.
+Validates that all requried binaries needed for this installation are present and executable.
 
 EOF
 
@@ -68,14 +74,15 @@ EOF
 	checkBinary jq "https://stedolan.github.io/jq/download/"
 	checkBinary yawn "https://www.npmjs.com/package/yawn#installation"
     
-  log_success "\nStep ${1:-} completed, binary dependency checks passed"
+  log_success "Step completed: Binary dependency checks passed"
 }
 
 installDeis() {
   cat << EOF
----------------------------
-> Step ${1:-}: Install Deis
----------------------------
+  
+-------------------------
+> Install Deis on cluster
+-------------------------
 
 This step will perform the actual installation onto the Kuberentes Cluster.
 
@@ -120,18 +127,21 @@ EOF
   # TODO: Annotate controller
   # TODO: Create initial user
   # TODO: Update DNS
+  # TODO: Update ELB listener so it terminates SSL
 }
 
 installPostgres() {
   cat << EOF
----------------------------
-> Step ${1:-}: Deis Postgres
----------------------------
+
+-----------------------
+> Install Deis Postgres
+-----------------------
 
 Deis uses a postgres database to save app config, users, etc. You can choose to run this database either on 
 the kube cluster or on other location outside of cluster. 
 
-EOF	
+EOF
+
 	read -p "Do you want to postgres on-cluster or off-cluster (On/off)? " choice
 
 	case "$choice" in 
@@ -180,50 +190,22 @@ EOF
   fi
 
   log_info "Postgres is configured/installed with following configuration:"
+  
   echo "Host: $DEIS_POSTGRES_HOST"
   echo "Port: $DEIS_POSTGRES_PORT"
   echo "Database: $DEIS_POSTGRES_DB"
   echo "User: $DEIS_POSTGRES_USER"
   echo "Password: $DEIS_POSTGRES_PASSWORD"
 
-  log_success "Step ${1:-} completed"
-}
-
-validateDns () {
-cat << EOF
-
-------------------------
-> Step ${1:-}: Validate DNS
-------------------------
-
-Deis will during installation create a public facing load balancer that receieves HTTP(s) traffic. The load balancer
-routes traffic to Deis Router which in turn will route it to the corresponding deis app mapped by domain name.
-
-To achieve this the load balancer needs a wildcard CNAME record, for example *.c1.fruster.se.
-
-Note that this will be set in later stage during this installation but to avoid half baked installations, we validate
-that the domain exist and that it has NS records.
-
-EOF
-
-  read -p "Enter deis router domain (for example c1.fruster.se): " DEIS_DOMAIN
-
-  NUM_NS_RECORDS=$(dig +short NS $DEIS_DOMAIN |wc -l)
-
-  if (( $NUM_NS_RECORDS < 3 )) ; then
-    log_error "Failed to validate NS records of ${DEIS_DOMAIN}, make sure that ${DEIS_DOMAIN} has nameservers set, check by running 'dig NS $DEIS_DOMAIN'"
-    exit 1 
-  fi
-
-  log_success "Step ${1:-} completed: DNS ${DEIS_DOMAIN} seems to exist"
+  log_success "Step completed"
 }
 
 validateCert () {
   cat << EOF
 
--------------
-> Step ${1:-}: SSL
--------------
+-----
+> SSL
+-----
 
 SSL is a requirement for any production ready cluster. This installation will assume that SSL is terminated by the 
 load balancer and since we are using AWS we want to use AWS Certificate Manager to create (free) certificates.
@@ -231,7 +213,7 @@ load balancer and since we are using AWS we want to use AWS Certificate Manager 
 The cert needs to be a wildcard cert for domain from previous step, but it may also contain more domain names if
 other domains will point to deis.
 
-This step will list all certificates that exists in you AWS account and enter ARN of the one that has support for ${DEIS_DOMAIN}.
+This step will list all certificates that exists in you AWS account and enter ARN of the one that has support for ${DEIS_FQDN}.
 
 EOF
 
@@ -239,13 +221,39 @@ EOF
   echo ""
   read -p "Enter ARN of SSL certificate to use: " SSL_CERT_ARN
   
-  if aws acm describe-certificate --certificate-arn ${SSL_CERT_ARN} | jq -r .Certificate.SubjectAlternativeNames | grep -q $DEIS_DOMAIN ; then
-    log_success "Step ${1:-}: SSL cert seems ok"
+  if aws acm describe-certificate --certificate-arn ${SSL_CERT_ARN} | jq -r .Certificate.SubjectAlternativeNames | grep -q $DEIS_FQDN ; then
+    log_success "Step completed: SSL cert seems ok"
   else
-    log_error "Could not find SSL cert that matches domain ${DEIS_DOMAIN}"
+    log_error "Could not find SSL cert that matches domain ${DEIS_FQDN}"
     exit 1
   fi
 }
+
+# configureDns() {
+#   cat << EOF
+
+# ------------------------
+# > Step ${1:-}: Configure DNS
+# ------------------------
+
+# Deis will during installation create a public facing load balancer that receieves HTTP(s) traffic. The load balancer
+# routes traffic to Deis Router which in turn will route it to the corresponding deis app mapped by domain name.
+
+# To achieve this the load balancer needs a wildcard CNAME record, for example *.c1.fruster.se which will set in 
+# a later stage during the installation.
+
+# EOF
+
+#   read -p "Enter deis router domain (for example c1.fruster.se): " DEIS_FQDN
+#   # NUM_NS_RECORDS=$(dig +short NS $DEIS_FQDN |wc -l)
+
+#   # if (( $NUM_NS_RECORDS < 3 )) ; then
+#   #   log_error "Failed to validate NS records of ${DEIS_FQDN}, make sure that ${DEIS_FQDN} has nameservers set, check by running 'dig NS $DEIS_FQDN'"
+#   #   exit 1 
+#   # fi
+
+#   log_success "Step ${1:-} completed: DNS set to ${DEIS_FQDN}"
+# }
 
 createBucketIfNotAlreadyExisting() {
     createResponse=$(aws s3 mb s3://${1} 2>&1 ||true)
@@ -265,9 +273,9 @@ createBucketIfNotAlreadyExisting() {
 createDeisBuckets() {
   cat << EOF
 
------------------------------
-> Step ${1:-}: Create S3 Buckets
------------------------------
+-------------------
+> Create S3 Buckets
+-------------------
 
 Deis uses S3 buckets to save state off cluster, so three buckets needs to be created:
 
@@ -287,16 +295,15 @@ EOF
     createBucketIfNotAlreadyExisting $DEIS_DB_BUCKET
     createBucketIfNotAlreadyExisting $DEIS_REGISTRY_BUCKET
 
-    log_success "Step ${1:-} completed: Buckets has been created"
+    log_success "Step completed: Buckets has been created"
 }
-
 
 configureDeisAws() {
   cat << EOF
 
----------------------------
-> Step ${1:-}: Deis AWS Access
----------------------------
+-----------------
+> Deis AWS Access
+-----------------
 
 Deis needs access to AWS in order to save and retrieve content to S3.
 
@@ -322,7 +329,7 @@ EOF
 
     if aws s3api head-bucket --bucket ${DEIS_BUILDER_BUCKET} && aws s3api head-bucket --bucket ${DEIS_REGISTRY_BUCKET};
     then
-      log_success "Step ${1:-} completed"
+      log_success "Step completed"
     else
       log_error "Cannot access deis bucket(s) with provided AWS Access Key and Secret"
       exit 1
@@ -333,6 +340,22 @@ EOF
     export AWS_SECRET_ACCESS_KEY=$OLD_AWS_SECRET_ACCESS_KEY
 
     set -o errexit 
+}
+
+configureLoadBalancer() {
+  cat << EOF
+
+------------------------------
+> Configure Deis Load Balancer
+------------------------------
+
+Deis created a load balancer (a ELB) during installation.
+
+This will during this step be configured to terminate SSL and reference the SSL cert
+from AWS Certififace Manager.
+
+EOF
+
 }
 
 showPostCreateInfo() {
@@ -364,7 +387,7 @@ Once the output is something like this, deis is up and running:
 
 Next steps:
 
-1. Point *.${DEIS_DOMAIN} to Deis's newly created load balancer $(kubectl -n deis get svc deis-router -o json |jq -r .status.loadBalancer.ingress[].hostname)
+1. Point *.${DEIS_FQDN} to Deis's newly created load balancer $(kubectl -n deis get svc deis-router -o json |jq -r .status.loadBalancer.ingress[].hostname)
 
 2. Add SSL cert to Deis load balancer.
 
@@ -405,20 +428,22 @@ if [ -z ${1:-} ]
 then
     usage    
 else
-    DEIS_CLUSTER_NAME=$1
+    DEIS_FQDN=$1
 fi
 
-validateDeps 1
-validateAws 2
-validateCluster 3
-validateDns 4
-validateCert 5
+validateDeps
+validateAws
+validateCluster
+#configureDns
+validateCert
 
-createDeisBuckets $DEIS_CLUSTER_NAME
-configureDeisAws 6
+createDeisBuckets $DEIS_FQDN
+configureDeisAws
 
 installHelm
 installPostgres
 installDeis
+
+configureLoadBalancer
 
 showPostCreateInfo

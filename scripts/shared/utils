@@ -64,9 +64,9 @@ checkBinary() {
 validateCluster() {
 	cat << EOF
 
---------------------------------------
-> Step ${1:-}: Validate kube cluster access
---------------------------------------
+------------------------------
+> Validate kube cluster access
+------------------------------
 
 Validates access to kube cluster and the cluster we point to is the one
 to do changes on. Configuration for current cluster is found in ~/.kube/config.
@@ -90,9 +90,9 @@ installHelm() {
 validateAws() {
 	cat << EOF
 
-----------------------------------
-> Step ${1:-}: Validate AWS credentials
-----------------------------------
+--------------------------
+> Validate AWS credentials
+--------------------------
 
 Validate that current shell session has access to AWS using aws cli.
 

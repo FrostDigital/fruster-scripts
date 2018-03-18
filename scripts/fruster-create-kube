@@ -49,12 +49,12 @@ FRUSTER_ADMIN_CIDR         cidr block where admin access is allowed
 
 EXAMPLES:
 
-# Create new cluster with default options
-$0 my-new-cluster
+  # Create new cluster with default options
+  fruster-create-kube my-new-cluster
 
-# Set admin access cidr
-export FRUSTER_ADMIN_CIDR=test
-$0 my-new-cluster
+  # Set admin access cidr
+  export FRUSTER_ADMIN_CIDR=test
+  fruster-create-kube my-new-cluster
 
 EOF
 	exit
@@ -63,9 +63,9 @@ EOF
 validateDeps() {
   cat << EOF
   
----------------------------
-> Step ${1:-}: Validate binaries
----------------------------
+-------------------
+> Validate binaries
+-------------------
 
 Validate that all requried binaries needed for this installation is present and executable.
 
@@ -75,15 +75,16 @@ EOF
 	checkBinary kubectl "https://kubernetes.io/docs/tasks/tools/install-kubectl/"
 	checkBinary kops "https://github.com/kubernetes/kops/blob/master/docs/install.md"
 	checkBinary jq "https://stedolan.github.io/jq/download/"
-	log_success "Binary dependency checks passed"
+	
+  log_success "Step completed: Binary dependency checks passed"
 }
 
 configureSshKey() {
   cat << EOF
   
----------------------------
-> Step ${1:-}: Validate binaries
----------------------------
+-------------------
+> Configure SSH key
+-------------------
 
 Validate that all requried binaries needed for this installation is present and executable.
 
@@ -115,15 +116,15 @@ EOF
     SSH_KEY="${SSH_KEY_PRIV}.pub"
   fi
 
- 	log_success "Using ssh key $SSH_KEY"
+ 	log_success "Step completed: Using ssh key $SSH_KEY"
 }
 
 createStateStore() {
   cat << EOF
   
----------------------------------
-> Step ${1:-}: Create kops state store
----------------------------------
+-------------------------
+> Create kops state store
+-------------------------
 
 Kops saves cluster state in a S3 bucket. This bucket ${KOPS_STATE_STORE_NAME} will be created 
 in this step.
@@ -137,21 +138,21 @@ EOF
       exit 1    
     fi    
     
-    log_success "Step ${1:-} completed: Existing state store bucket ${KOPS_STATE_STORE_NAME} is used"
+    log_success "Step completed: Existing state store bucket ${KOPS_STATE_STORE_NAME} is used"
   else    
     aws s3api create-bucket --bucket ${KOPS_STATE_STORE_NAME} --region us-east-1 &> /dev/null || (log_error "Failed creating state store bucket '${KOPS_STATE_STORE_NAME}', probably because bucket already exist or due to invalid permissions" && exit 1)
     aws s3api put-bucket-versioning --bucket ${KOPS_STATE_STORE_NAME}  --versioning-configuration Status=Enabled
 	  
-    log_success "Step ${1:-} completed: State store bucket ${KOPS_STATE_STORE_NAME} created"
+    log_success "Step completed: State store bucket ${KOPS_STATE_STORE_NAME} created"
   fi	
 }
 
 kopsCreateCluster() {
   cat << EOF
   
-------------------------------
-> Step ${1:-}: Creating the cluster
-------------------------------
+----------------------
+> Creating the cluster
+----------------------
 
 During this step the actual installation will happen.
 
@@ -174,7 +175,7 @@ EOF
 	    --yes \
 	    $KOPS_CLUSTER_NAME
 
-	log_success "Step ${1:-} completed: Finished creating kops cluster"
+	log_success "Step completed: Finished creating kops cluster"
 }
 
 setVars() {
@@ -222,10 +223,10 @@ EOF
 
 createBastion() {
   cat << EOF
-  
-------------------------------
-> Step ${1:-}: Create Bastion host
-------------------------------
+
+---------------------
+> Create Bastion host
+---------------------
 
 Creates a Bastion host for the cluster.
 
@@ -233,7 +234,7 @@ Note that this should be done by setting --bastion flag in during kops cluster c
 cannot be done due to this issue https://github.com/kubernetes/kops/issues/2881, once fixed this can
 be simplified.
 
-EOF  
+EOF
   kops create instancegroup bastions \
     --role Bastion \
     --subnet utility-${AWS_ZONE} \
@@ -245,7 +246,7 @@ EOF
     --state s3://${KOPS_STATE_STORE_NAME} \
     --yes
  
-  log_success "Step ${1:-} completed: Bastion was created"    
+  log_success "Step completed: Bastion was created"    
 }
 
 showPostCreateInfo() {
@@ -305,12 +306,13 @@ fi
 
 setVars ${1:-""}
 
-validateDeps 1
-validateAws 2
-configureSshKey 3
+validateDeps
+validateAws
+configureSshKey
 
-createStateStore 4
-kopsCreateCluster 5
-createBastion 6
+createStateStore
+kopsCreateCluster
+createBastion
 
 showPostCreateInfo
+
