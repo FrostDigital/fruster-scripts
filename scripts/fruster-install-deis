@@ -199,12 +199,11 @@ createDeisBuckets() {
 > Create S3 Buckets
 -------------------
 
-Deis uses S3 buckets to save state off cluster, so three buckets needs to be created:
+Deis uses S3 buckets to save state off cluster, so three buckets needs to be created or validate
+that they exists:
 
 * Deis builder
 * Deis registry
-
-Note that this step will not fail if buckets already exists. 
 
 EOF
     # Deis gets confused if there are dots bucket names, replace with dash
@@ -360,7 +359,7 @@ traffic to deis router.
 
 EOF
 
-  if promptDefaultYes "Do you want to create a wildcard CNAME record for ${deisFqdn} that points to deis load balancerELB (note that this requires that route53 hosts DNS for ${deisFqdn})"; then
+  if ! promptDefaultYes "Do you want to create a wildcard CNAME record for ${deisFqdn} that points to deis load balancerELB (note that this requires that route53 hosts DNS for ${deisFqdn})"; then  
     log_success: "Step completed: Nothing todo"
   else
     # Get hostname of ELB that deis created
@@ -447,7 +446,7 @@ Congrats, the installation process is finished!
 
 It may a couple of minutes until all deis pods are started and ready. Check progress by running:
 
-  kubectl -n deis get po
+$ kubectl -n deis get po
 
 Once the output is something like this, deis is up and running:
 
@@ -467,11 +466,11 @@ Once the output is something like this, deis is up and running:
 
 Now, lets register yourself on deis by running:
 
-  deis register https://deis.${deisFqdn}
+$ deis register https://deis.${deisFqdn}
 
 In case you want to revert the installation, run:
 
-    helm delete deis --purge; helm delete postgres --purge; kubectl delete ns deis
+$ helm delete deis --purge; helm delete postgres --purge; kubectl delete ns deis
 
 EOF
 }

@@ -46,13 +46,12 @@ EXAMPLES:
     # Initalizes fruster-switch
     fruster-switch -i
 
-    # Starts interactive wizard to add cluster to fruster-switch
-    fruster -a
+    # Starts interactive wizard to add "my-cluster" to fruster-switch
+    fruster -a my-cluster
 
 EOF
 	exit
 }
-
 
 init() {
   log_info "Initializing fruster-switch..."
@@ -60,16 +59,49 @@ init() {
 }
 
 addCluster() {
+  if [ -z ${1:-} ]; then
+    log_error "Missing cluster alias"
+    exit
+  fi
+  
+  clusterAlias=$1
+  clusterDir=$FRUSTER_SWITCH_HOME/$clusterAlias
+  clusterKubeConfig=$clusterDir/kubeconfig
+  clusterDeisConfig=$clusterDir/deisconfig
+
+  if [ -f $clusterKubeConfig ]; then
+    if promptDefaultYes "Kube config for cluster $clusterAlias already exists ($clusterKubeConfig), do you want to keep existing kube config"; then
+      log_success "Keeping cluster config $clusterKubeConfig"
+    else
+      configureKubernetes
+    fi
+  else 
+    # shitcode...    
+    configureKubernetes
+  fi
+
+  if [ -f $clusterDeisConfig ]; then
+    if promptDefaultYes "Deis config for cluster $clusterAlias already exists ($clusterDeisConfig), do you want to keep existing deis config"; then
+      log_success "Keeping deis config $clusterDeisConfig"
+    fi    
+  else      
+    configureDeis  
+  fi
+
+  log_success "\nConfiguration completed for $clusterAlias (config written to $clusterDir).\nSwitch to this cluster by running:\n\n$ fruster-switch $clusterAlias"
+}
+
+configureKubernetes() {
   read -p "Add cluster from kops (s)tate store or by providing a (y)aml file? " choice
 
 	case "$choice" in 
-		s|S) addClusterFromKopsStateStore;;
-	  y|Y) addClusterFromYamlFile;;
+		s|S) configureKubeFromKopsStateStore;;
+	  y|Y) configureKubeFromYamlFile;;
 	  * ) { echo "Invalid choice"; exit 1; };;
 	esac
 }
 
-addClusterFromKopsStateStore() {
+configureKubeFromKopsStateStore() {
   tempDir=$(mktemp -d)
 
   # Set kops cluster name
@@ -93,26 +125,11 @@ addClusterFromKopsStateStore() {
   # Save kube config to temp file
   tempKubeConfig=$tempDir/kubeconfig
   KUBECONFIG=$tempKubeConfig kops export kubecfg --name $clusterName --state s3://$kopsStateStoreBucket
-
-  read -p $'\n'"Enter alias for cluster (choose something short but descriptive):"$'\n> ' clusterAlias
   
-  clusterDir=$FRUSTER_SWITCH_HOME/$clusterAlias
-
-  if [ -d $clusterDir ]; then
-      if promptDefaultYes "Cluster with alias $clusterAlias already exists (directory $clusterDir), this may overwrite your existing kube config, do you want to continue"; then
-        log_error "Better safe then sorry, exiting..."
-        exit 1
-      fi      
-  fi
-
   mkdir -p $clusterDir && mv $tempKubeConfig $clusterDir
-
-  log_success "\nKube config was written to $clusterDir/kubeconfig. Switch to this cluster by running:\n\n$ fruster-switch $clusterAlias"
-
-  addDeis $clusterAlias
 }
 
-addClusterFromYamlFile() { 
+configureKubeFromYamlFile() { 
   read -p $'\n'"Enter absolute path to YAML file that contains clusters kube config:"$'\n> ' clusterKubeConfig
 
   if [ ! -f $clusterKubeConfig ]; then   
@@ -120,30 +137,13 @@ addClusterFromYamlFile() {
     exit 1
   fi
 
-  read -p $'\n'"Enter alias for cluster (choose something short but descriptive):"$'\n> ' clusterAlias
-
-  clusterDir=$FRUSTER_SWITCH_HOME/$clusterAlias
-
-  if [ -d $clusterDir ]; then
-      if promptDefaultYes "Cluster with alias $clusterAlias already exists (directory $clusterDir), this may overwrite your existing kube config, do you want to continue"; then
-        log_error "Better safe then sorry, exiting..."
-        exit 1
-      fi      
-  fi
-
   mkdir -p $clusterDir && cp $clusterKubeConfig $clusterDir/kubeconfig
-
-  addDeis $clusterAlias
-  
-  log_success "\nConfig was written to $clusterDir. Switch to this cluster by running:\n\n$ fruster-switch $clusterAlias"
 }
 
-addDeis() {
-  clusterAlias=$1
-  
+configureDeis() {  
   echo ""
   
-  if promptDefaultYes "Do you want to add deis to $clusterAlias"; then        
+  if ! promptDefaultYes "Do you want to configure deis access for $clusterAlias"; then
     log_info "Ok, another time - exiting..."
     exit 
   fi
@@ -203,7 +203,7 @@ switch() {
   deis whoami
 }
 
-while getopts ":vhia" opt; do  
+while getopts ":vhia:" opt; do  
 	case $opt in    	    	  
     v)
 	    DEBUG=1
@@ -213,7 +213,7 @@ while getopts ":vhia" opt; do
       init
       ;;
     a)
-      addCluster
+      addCluster $OPTARG
       exit
       ;;	
     h)

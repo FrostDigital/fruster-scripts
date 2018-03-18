@@ -106,7 +106,7 @@ EOF
         
     # Check if key already exist at that location, if so prompt user
     if [ -f "${SSH_KEY_PRIV}" ] ; then
-      if promptDefaultYes "Key ${SSH_KEY_PRIV} already exists, is this the correct key pair to use"; then
+      if ! promptDefaultYes "Key ${SSH_KEY_PRIV} already exists, is this the correct key pair to use"; then      
         exit 1
       fi
     else 
@@ -133,7 +133,7 @@ EOF
 
   if doesBucketExist ${KOPS_STATE_STORE_NAME};
   then
-    if promptDefaultYes "Bucket ${KOPS_STATE_STORE_NAME} already exists, do want to (re)use this bucket to host clusters state store"; then
+    if ! promptDefaultYes "Bucket ${KOPS_STATE_STORE_NAME} already exists, do want to (re)use this bucket to host clusters state store"; then
       log_error "Ok, exiting - you need to either remove existing state store bucket or change state store name by setting env var FRUSTER_KOPS_STATE_STORE"
       exit 1    
     fi    
@@ -218,8 +218,8 @@ EOF
 
   echo ""
 
-  if promptDefaultYes "Is this correct"; then
-    exit 0
+  if ! promptDefaultYes "Is this correct"; then
+    exit 1
   fi	
 }
 
