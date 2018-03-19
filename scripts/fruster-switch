@@ -68,24 +68,29 @@ addCluster() {
   clusterDir=$FRUSTER_SWITCH_HOME/$clusterAlias
   clusterKubeConfig=$clusterDir/kubeconfig
   clusterDeisConfig=$clusterDir/deisconfig
+  
 
-  if [ -f $clusterKubeConfig ]; then
-    if promptDefaultYes "Kube config for cluster $clusterAlias already exists ($clusterKubeConfig), do you want to keep existing kube config"; then
-      log_success "Keeping cluster config $clusterKubeConfig"
-    else
+  if promptDefaultYes "Configure for kubernetes access"; then
+    if [ -f $clusterKubeConfig ]; then
+      if promptDefaultYes "Kube config for cluster $clusterAlias already exists ($clusterKubeConfig), do you want to keep it"; then
+        log_success "Keeping cluster config $clusterKubeConfig"
+      else
+        configureKubernetes
+      fi
+    else 
+      # shitcode...    
       configureKubernetes
     fi
-  else 
-    # shitcode...    
-    configureKubernetes
   fi
 
-  if [ -f $clusterDeisConfig ]; then
-    if promptDefaultYes "Deis config for cluster $clusterAlias already exists ($clusterDeisConfig), do you want to keep existing deis config"; then
-      log_success "Keeping deis config $clusterDeisConfig"
-    fi    
-  else      
-    configureDeis  
+  if promptDefaultYes "Configure for deis access"; then
+    if [ -f $clusterDeisConfig ]; then
+      if promptDefaultYes "Deis config for cluster $clusterAlias already exists ($clusterDeisConfig), do you want to keep existing deis config"; then
+        log_success "Keeping deis config $clusterDeisConfig"
+      fi    
+    else      
+      configureDeis  
+    fi
   fi
 
   log_success "\nConfiguration completed for $clusterAlias (config written to $clusterDir).\nSwitch to this cluster by running:\n\n$ fruster-switch $clusterAlias"
