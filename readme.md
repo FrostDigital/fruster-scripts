@@ -17,7 +17,7 @@ installation at smooth as possible.
 ## Installation
 
 ```
-curl https://raw.githubusercontent.com/FrostDigital/fruster-scripts/master/install/fruster-install.sh | sudo bash
+curl -s https://raw.githubusercontent.com/FrostDigital/fruster-scripts/master/install/fruster-install.sh | sudo bash
 ```	
 
 ## `fruster-create-kube`
@@ -25,7 +25,6 @@ curl https://raw.githubusercontent.com/FrostDigital/fruster-scripts/master/insta
 Script to create a new Kubernetes Cluster on AWS. It will use Kops to do the heavy lifting.
 
 Run `fruster-create-kube -h` for usage and configuration options.
-
 
 ## `fruster-install-deis`
 
@@ -38,6 +37,12 @@ Run `fruster-install-deis -h` for usage and configuration options.
 Script to install NATS onto an existing Kubernetes Cluster on AWS.
 
 Run `fruster-install-nats -h` for usage and configuration options.
+
+## `fruster-switch`
+
+Script to easily switch between active kubernetes cluster and deis deployment.
+
+Run `fruster-switch -h` for usage.
 
 
 
