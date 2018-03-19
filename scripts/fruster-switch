@@ -83,6 +83,8 @@ addCluster() {
     fi
   fi
 
+  echo ""
+
   if promptDefaultYes "Configure for deis access"; then
     if [ -f $clusterDeisConfig ]; then
       if promptDefaultYes "Deis config for cluster $clusterAlias already exists ($clusterDeisConfig), do you want to keep existing deis config"; then
@@ -145,14 +147,7 @@ configureKubeFromYamlFile() {
   mkdir -p $clusterDir && cp $clusterKubeConfig $clusterDir/kubeconfig
 }
 
-configureDeis() {  
-  echo ""
-  
-  if ! promptDefaultYes "Do you want to configure deis access for $clusterAlias"; then
-    log_info "Ok, another time - exiting..."
-    exit 
-  fi
-
+configureDeis() {
   read -p $'\n'"Enter url to deis router (example https://deis.example.com):"$'\n> ' deisController
 
   set +o errexit
