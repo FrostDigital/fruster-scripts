@@ -87,9 +87,12 @@ addCluster() {
 
   if promptDefaultYes "Configure for deis access"; then
     if [ -f $clusterDeisConfig ]; then
-      if promptDefaultYes "Deis config for cluster $clusterAlias already exists ($clusterDeisConfig), do you want to keep existing deis config"; then
+      if promptDefaultYes "Deis config for $clusterAlias already exists ($clusterDeisConfig), do you want to keep existing deis config"; then
         log_success "Keeping deis config $clusterDeisConfig"
-      fi    
+      else
+        # shitcode...
+        configureDeis  
+      fi        
     else      
       configureDeis  
     fi
@@ -162,15 +165,16 @@ configureDeis() {
   read -p "Enter deis password:"$'\n> ' -s deisPassword
 
   deisUser=${deisUser:-$(whoami)}
-    
-  set +o errexit
-  if DEIS_PROFILE=$clusterAlias deis login $deisController --username=$deisUser --password=$deisPassword ; then    
-    cp ~/.deis/${clusterAlias}.json $clusterDir/deisconfig    
-  else
-    log_error "Failed logging in to deis"
+  
+  # Login using controller API https://deis.com/docs/workflow/reference-guide/controller-api/v2.3/#log-in
+  token=$(curl -s -H "Content-Type: application/json" -X POST -d "{\"username\":\"$deisUser\",\"password\":\"$deisPassword\"}" $deisController/v2/auth/login/ |jq -r .token)
+
+  if [ -z $token ] || [ $token == "null" ] ; then    
+    log_error "Failed logging in to deis as $deisUser"
     exit 1
-  fi
-  set -o errexit
+  else    
+    echo "{\"username\":\"${deisUser}\",\"ssl_verify\":true,\"controller\":\"${deisController}\",\"token\":\"${token}\",\"response_limit\":0}" > $clusterDir/deisconfig    
+  fi  
 }
 
 switch() {
