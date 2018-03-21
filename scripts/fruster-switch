@@ -173,6 +173,7 @@ configureDeis() {
     log_error "Failed logging in to deis as $deisUser"
     exit 1
   else    
+    # TODO: ssl_verify might break if controller URL is not HTTPS
     echo "{\"username\":\"${deisUser}\",\"ssl_verify\":true,\"controller\":\"${deisController}\",\"token\":\"${token}\",\"response_limit\":0}" > $clusterDir/deisconfig    
   fi  
 }
