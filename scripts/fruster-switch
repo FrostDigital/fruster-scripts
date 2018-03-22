@@ -17,6 +17,8 @@ set -o pipefail
 
 DEBUG=0
 FRUSTER_SWITCH_HOME=~/.fruster-switch
+DEFAULT_DEIS_HOME="$HOME/.deis"
+DEIS_HOME=${DEIS_HOME:-$DEFAULT_DEIS_HOME}
 
 if [ -f "./shared/utils" ] ; then
   source ./shared/utils
@@ -200,12 +202,24 @@ switch() {
     log_error "Deis config does not exist: $deisConfig"
   else
     cp -f $deisConfig $FRUSTER_SWITCH_HOME/deisconfig-active
-    ln -sf $FRUSTER_SWITCH_HOME/deisconfig-active ~/.deis/client.json
+    ln -sf $FRUSTER_SWITCH_HOME/deisconfig-active ${DEIS_HOME}/client.json
   fi
   
   log_info "Switched to cluster $1, here is cluster-info:"
   kubectl cluster-info
   deis whoami
+}
+
+validateDeps() {
+	checkBinary curl "https://curl.haxx.se/download.html"	
+	checkBinary jq "https://stedolan.github.io/jq/download/"	  
+}
+
+validateDeisHome() {
+  if [ ! -d $DEIS_HOME ]; then
+    log_error "Could not find deis home directory $DEIS_HOME, configure by setting env variable DEIS_HOME in case default $DEFAULT_DEIS_HOME does not work for you"
+    exit 1  
+  fi
 }
 
 while getopts ":vhia:" opt; do  
@@ -235,6 +249,9 @@ if [ -z ${1:-} ]; then
   usage
   exit
 fi
+
+validateDeps
+validateDeisHome
 
 switch $1
 
