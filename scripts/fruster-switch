@@ -222,6 +222,9 @@ validateDeisHome() {
   fi
 }
 
+validateDeps
+validateDeisHome
+
 while getopts ":vhia:" opt; do  
 	case $opt in    	    	  
     v)
@@ -249,9 +252,6 @@ if [ -z ${1:-} ]; then
   usage
   exit
 fi
-
-validateDeps
-validateDeisHome
 
 switch $1
 

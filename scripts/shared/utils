@@ -51,12 +51,14 @@ promptDefaultYes() {
 # $1 - Binary name, for example "aws"
 #
 checkBinary() {
-	if command -v $1 >/dev/null 2>&1 ; then
+	set +o errexit
+	if command -v $1 > /dev/null ; then
 	  log_debug "Check passed: $1 was found $(command -v $1)"
 	else
 	  log_error "Check failed: $1 not found, follow instructions here to install it ${2:-*Oops, missing instructions*}"
 		exit 1
 	fi
+	set -o errexit
 }
 
 # Prompts user to verify that current kube context is the correct 
