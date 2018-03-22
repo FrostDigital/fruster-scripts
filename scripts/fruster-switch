@@ -20,6 +20,9 @@ FRUSTER_SWITCH_HOME=~/.fruster-switch
 DEFAULT_DEIS_HOME="$HOME/.deis"
 DEIS_HOME=${DEIS_HOME:-$DEFAULT_DEIS_HOME}
 
+DEFAULT_KUBE_HOME="$HOME/.kube"
+KUBE_HOME=${KUBE_HOME:-$DEFAULT_KUBE_HOME}
+
 if [ -f "./shared/utils" ] ; then
   source ./shared/utils
 else 
@@ -195,14 +198,14 @@ switch() {
     exit 1    
   fi
 
-  cp -f $kubeConfig $FRUSTER_SWITCH_HOME/kubeconfig-active
-  ln -sf $FRUSTER_SWITCH_HOME/kubeconfig-active ${KUBECONFIG:-~/.kube}/config
+  rm -f ${KUBE_HOME}/config
+  cp $kubeConfig ${KUBE_HOME}/config
 
   if [ ! -f $deisConfig ]; then
     log_error "Deis config does not exist: $deisConfig"
   else
-    cp -f $deisConfig $FRUSTER_SWITCH_HOME/deisconfig-active
-    ln -sf $FRUSTER_SWITCH_HOME/deisconfig-active ${DEIS_HOME}/client.json
+    rm -f ${DEIS_HOME}/client.json    
+    cp $deisConfig ${DEIS_HOME}/client.json
   fi
   
   log_info "Switched to cluster $1, here is cluster-info:"
@@ -222,8 +225,16 @@ validateDeisHome() {
   fi
 }
 
+validateKubeHome() {
+  if [ ! -d $KUBE_HOME ]; then
+    log_error "Could not find kube home directory $KUBE_HOME, configure by setting env variable KUBE_HOME in case default $DEFAULT_KUBE_HOME does not work for you"
+    exit 1  
+  fi
+}
+
 validateDeps
 validateDeisHome
+validateKubeHome
 
 while getopts ":vhia:" opt; do  
 	case $opt in    	    	  
