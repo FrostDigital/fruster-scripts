@@ -170,17 +170,18 @@ configureDeis() {
   read -p "Enter deis password:"$'\n> ' -s deisPassword
 
   deisUser=${deisUser:-$(whoami)}
-  
-  # Login using controller API https://deis.com/docs/workflow/reference-guide/controller-api/v2.3/#log-in
-  token=$(curl -s -H "Content-Type: application/json" -X POST -d "{\"username\":\"$deisUser\",\"password\":\"$deisPassword\"}" $deisController/v2/auth/login/ |jq -r .token)
+    
+  set +o errexit
 
-  if [ -z $token ] || [ $token == "null" ] ; then    
+  if DEIS_PROFILE=$clusterAlias deis login $deisController --username=$deisUser --password=$deisPassword ; then
+    rm -f $clusterDir/deisconfig
+    cp ${DEIS_HOME}/${clusterAlias}.json $clusterDir/deisconfig    
+  else
     log_error "Failed logging in to deis as $deisUser"
     exit 1
-  else    
-    # TODO: ssl_verify might break if controller URL is not HTTPS
-    echo "{\"username\":\"${deisUser}\",\"ssl_verify\":true,\"controller\":\"${deisController}\",\"token\":\"${token}\",\"response_limit\":0}" > $clusterDir/deisconfig    
   fi  
+
+  set -o errexit
 }
 
 switch() {
