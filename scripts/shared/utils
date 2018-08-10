@@ -75,7 +75,7 @@ to do changes on. Configuration for current cluster is found in ~/.kube/config.
 
 EOF
 	kubectl cluster-info |grep 'Kubernetes master'
-	if ! promptDefaultYes "Is above Kubernetes cluster the correct location to install Deis"; then	
+	if ! promptDefaultYes "Is above Kubernetes cluster the correct location"; then	
 		exit 1
 	fi
 	log_success "\nStep ${1:-} completed"
@@ -85,6 +85,7 @@ EOF
 installHelm() {	
 	log_info "\nInitializing helm on cluster in case it is not already there..."
 	helm init > /dev/null
+	sleep 5
 	log_success "Helm is initialized"
 }
 

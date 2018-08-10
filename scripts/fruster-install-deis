@@ -43,9 +43,8 @@ Assumptions this installation takes:
 * SSL certificate is requried to exist in AWS Certificate Manager
 
 OPTIONS:
-  -k      public ssh key used to access nodes, a new one will be created if none set
   -v      verbose logging
-  -h 		  show this message
+  -h      show this message
 
 EXAMPLES:
 
@@ -359,7 +358,7 @@ traffic to deis router.
 
 EOF
 
-  if ! promptDefaultYes "Do you want to create a wildcard CNAME record for ${deisFqdn} that points to deis load balancerELB (note that this requires that route53 hosts DNS for ${deisFqdn})"; then  
+  if ! promptDefaultYes "Do you want to create a wildcard CNAME record for ${deisFqdn} that points to deis load balancer (note that this requires that route53 hosts DNS for ${deisFqdn})"; then  
     log_success: "Step completed: Nothing todo"
   else
     # Get hostname of ELB that deis created
