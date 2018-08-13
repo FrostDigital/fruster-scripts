@@ -44,6 +44,12 @@ Script to easily switch between active kubernetes cluster and deis deployment.
 
 Run `fruster-switch -h` for usage.
 
+## `fruster-install-monitoring`
+
+Script to install Grafana and InfluxDB which can be used to collect and visualize monitoring and metric data.
+
+Run `fruster-install-monitoring -h` for usage.
+
 
 
 
