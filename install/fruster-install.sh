@@ -30,6 +30,7 @@ rm -f $BIN_DIR/fruster-create-kube
 rm -f $BIN_DIR/fruster-install-deis
 rm -f $BIN_DIR/fruster-install-nats
 rm -f $BIN_DIR/fruster-switch
+rm -f $BIN_DIR/fruster-install-monitoring
 
 echo "Linking..."
 
@@ -38,6 +39,7 @@ ln -s $TARGET_DIR/scripts/fruster-create-kube $BIN_DIR/fruster-create-kube
 ln -s $TARGET_DIR/scripts/fruster-install-deis $BIN_DIR/fruster-install-deis
 ln -s $TARGET_DIR/scripts/fruster-install-nats $BIN_DIR/fruster-install-nats
 ln -s $TARGET_DIR/scripts/fruster-switch $BIN_DIR/fruster-switch
+ln -s $TARGET_DIR/scripts/fruster-install-monitoring $BIN_DIR/fruster-install-monitoring
 
 echo "Installation complete!"
 
