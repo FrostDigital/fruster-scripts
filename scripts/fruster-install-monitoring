@@ -32,11 +32,12 @@ OPTIONS:
   -s      InfluxDB volume size (default 200Gi)
   -v      verbose logging
   -h 		  show this message
+  -p 		  Grafana admin user password
 
 EXAMPLES:
 
-	# Install NATS with namespace "paceup"
-	fruster-install-nats -n paceup
+	# Install monitoring pods with password for admin user "Password123"
+	fruster-install-nats -p Password123
 
 EOF
 	exit
