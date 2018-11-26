@@ -71,7 +71,7 @@ EOF
 	checkBinary kubectl "https://kubernetes.io/docs/tasks/tools/install-kubectl/"
 	checkBinary helm "https://github.com/kubernetes/helm#install"
 	checkBinary jq "https://stedolan.github.io/jq/download/"
-	checkBinary yawn "https://www.npmjs.com/package/yawn#installation"
+	checkBinary yawn "https://www.npmjs.com/package/yawn-yaml-cli#installation"
     
   log_success "Step completed: Binary dependency checks passed"
 }
