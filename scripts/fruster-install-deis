@@ -119,7 +119,8 @@ EOF
       exit 1    
     fi
     
-    helm install --name postgres \
+    helm install --set global.use_rbac=true \ 
+      --name postgres \
       --namespace deis-postgres \
       --set postgresUser=deis,postgresPassword=${postgresPassword} \
       stable/postgresql
