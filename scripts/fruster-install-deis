@@ -281,7 +281,7 @@ Be patient, this may take a couple of minutes.
 
 EOF
   # Add deis
-  helm repo add deis https://charts.deis.com/workflow
+  helm repo add deis https://charts.teamhephy.com/workflow
 
   # Save Deis chart values to a temp location
   values=${tempDir}/values.yaml
