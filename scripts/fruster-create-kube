@@ -174,7 +174,7 @@ EOF
 	  	--node-tenancy=${AWS_TENANCY} \
 	  	--admin-access=${ADMIN_CIDR} \
 	  	--state=s3://${KOPS_STATE_STORE_NAME} \
-      --authorization=AlwaysAllow \
+	  	--authorization=AlwaysAllow \
 	    --yes \
 	    $KOPS_CLUSTER_NAME
 
