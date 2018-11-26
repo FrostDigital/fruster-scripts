@@ -307,7 +307,7 @@ EOF
   yawn set ${values} global.grafana_location "off-cluster"
   yawn set ${values} global.influxdb_location "off-cluster"
   
-  helm install deis/workflow --namespace deis --name deis -f ${values}
+  helm install deis/workflow --set global.use_rbac=true --namespace deis --name deis -f ${values}
 
   sleep 10
 
