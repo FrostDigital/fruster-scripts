@@ -318,5 +318,4 @@ kopsCreateCluster
 createBastion
 
 showPostCreateInfo
-saveKubeConfig
 
