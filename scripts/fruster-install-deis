@@ -173,7 +173,7 @@ EOF
   if aws acm describe-certificate --certificate-arn ${sslCertArn} | jq -r .Certificate.SubjectAlternativeNames | grep -q $deisFqdn ; then
     log_success "Step completed: SSL cert seems ok"
   else
-    log_error "Could not find SSL cert that matches domain ${deisFqdn}"
+    log_error "Could not find SSL cert that matches domain ${deisFqdn}, is it expired or not yet validated?"
     exit 1
   fi
 }
