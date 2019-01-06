@@ -119,10 +119,10 @@ EOF
       exit 1    
     fi
     
-    helm install \ 
+    helm install \
       --name postgres \
       --namespace deis-postgres \
-      --set postgresUser=deis,postgresPassword=${postgresPassword} \
+      --set postgresqlUsername=deis,postgresqlPassword=${postgresPassword},postgresqlDatabase=deis \
       stable/postgresql
 
     postgresHost=postgres-postgresql.deis-postgres.svc.cluster.local
@@ -309,7 +309,7 @@ EOF
   
   helm install deis/workflow --namespace deis --name deis -f ${values}
 
-  sleep 10
+  sleep 45
 
   # Removes deis.monitor since we do not need that
   kubectl -n deis delete ds deis-monitor-telegraf
@@ -358,13 +358,12 @@ Point all traffic from *.${deisFqdn} to Deis loadbalancer which in turn will for
 traffic to deis router.
 
 EOF
+  # Get hostname of ELB that deis created
+  deisElbHostName=$(kubectl -n deis get svc deis-router -o json |jq -r .status.loadBalancer.ingress[].hostname)
 
   if ! promptDefaultYes "Do you want to create a wildcard CNAME record for ${deisFqdn} that points to deis load balancer (note that this requires that route53 hosts DNS for ${deisFqdn})"; then  
-    log_success: "Step completed: Nothing todo"
-  else
-    # Get hostname of ELB that deis created
-    deisElbHostName=$(kubectl -n deis get svc deis-router -o json |jq -r .status.loadBalancer.ingress[].hostname)
-
+    log_success "Step completed: Nothing todo"
+  else    
     if [ -z $deisElbHostName ]; then
       log_error "Could not get hostname of deis load balancer, this could be that deis has not completed installation onto your cluster"
       exit 1      
@@ -470,7 +469,7 @@ $ deis register https://deis.${deisFqdn}
 
 In case you want to revert the installation, run:
 
-$ helm delete deis --purge; helm delete postgres --purge; kubectl delete ns deis
+$ helm delete deis --purge; helm delete postgres --purge; kubectl delete ns deis; kubectl delete ns deis-postgres
 
 EOF
 }

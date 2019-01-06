@@ -44,7 +44,7 @@ The following env vars are supported for further customization:
 
 FRUSTER_KOPS_STATE_STORE   set name of S3 state store bucket, will use name of cluster and suffix "-kops-state-store" if none is provided
 FRUSTER_AWS_TENANCY        tenancy type of master and worker nodes, defaults to "default" which indicates shared tenancy
-FRUSTER_AWS_NODE_SIZE      aws node instance type of worker nodes, defaults to "m3.medium"
+FRUSTER_AWS_NODE_SIZE      aws node instance type of worker nodes, defaults to "m5.large"
 FRUSTER_ADMIN_CIDR         cidr block where admin access is allowed, for example office ip
 
 EXAMPLES:
@@ -196,7 +196,7 @@ setVars() {
 		KOPS_STATE_STORE_NAME="${FRUSTER_KOPS_STATE_STORE}"
 	fi
 
-	AWS_NODE_SIZE=${FRUSTER_AWS_NODE_SIZE:-m3.medium}
+	AWS_NODE_SIZE=${FRUSTER_AWS_NODE_SIZE:-m5.large}
 	AWS_TENANCY=${FRUSTER_AWS_TENANCY:-default}
 	ADMIN_CIDR=${FRUSTER_ADMIN_CIDR:-0.0.0.0/0}
   AWS_ZONE=${AWS_ZONE:-eu-west-1a}
