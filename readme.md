@@ -50,6 +50,13 @@ Script to install Grafana and InfluxDB which can be used to collect and visualiz
 
 Run `fruster-install-monitoring -h` for usage.
 
+## `fruster-run-remote`
+
+Script to easily tunnel into remote cluster and attach to NATS bus.
+
+Run `fruster-run-remote` for usage.
+
+
 
 
 

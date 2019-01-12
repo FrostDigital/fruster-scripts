@@ -31,6 +31,7 @@ rm -f $BIN_DIR/fruster-install-deis
 rm -f $BIN_DIR/fruster-install-nats
 rm -f $BIN_DIR/fruster-switch
 rm -f $BIN_DIR/fruster-install-monitoring
+rm -f $BIN_DIR/fruster-run-remote
 
 echo "Linking..."
 
@@ -40,6 +41,7 @@ ln -s $TARGET_DIR/scripts/fruster-install-deis $BIN_DIR/fruster-install-deis
 ln -s $TARGET_DIR/scripts/fruster-install-nats $BIN_DIR/fruster-install-nats
 ln -s $TARGET_DIR/scripts/fruster-switch $BIN_DIR/fruster-switch
 ln -s $TARGET_DIR/scripts/fruster-install-monitoring $BIN_DIR/fruster-install-monitoring
+ln -s $TARGET_DIR/scripts/fruster-run-remote $BIN_DIR/fruster-run-remote
 
 echo "Installation complete!"
 
