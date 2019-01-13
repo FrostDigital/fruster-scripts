@@ -89,6 +89,12 @@ validate_namespace () {
 	set -o errexit
 }
 
+scaleUp () {
+  echo "Scaling up ${NUM_INSTANCES} instance(s) before exit)..."    
+  deis ps:scale cmd=${NUM_INSTANCES} -a $APP
+	pkill -a kubectl
+}
+
 nats_tunnel () {  
   # Copy config from deis app
   source_deis_config $APP
@@ -100,21 +106,11 @@ nats_tunnel () {
   # Overwrite BUS env to point to tunneled one
   export BUS=nats://localhost:4223
 		
-	get_num_instances
+  get_num_instances
 
   deis ps:scale cmd=0 -a $APP
-
-	#if [ $WATCH == 1 ] ; then
-  	nodemon ${ENTRYPOINT:-"app.js"}
-	# else
-	# 	node ${ENTRYPOINT:-"app.js"}
-	# fi
-
-  function scaleUp {
-    echo "Scaling up ${NUM_INSTANCES} instance(s) before exit)..."    
-    deis ps:scale cmd=${NUM_INSTANCES} -a $APP
-    pkill -a kubectl
-  }
+	
+  nodemon ${ENTRYPOINT:-"app.js"}
 
   trap scaleUp EXIT INT TERM
 }
