@@ -277,7 +277,7 @@ Here are some commands that may come in handy:
 EOF
 }
 
-while getopts ":fvzhk:c:" opt; do
+while getopts ":fvhk:c:z:" opt; do
 	case $opt in    	
     k)
 		SSH_KEY="$OPTARG"
