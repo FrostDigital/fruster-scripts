@@ -70,8 +70,7 @@ EOF
 	checkBinary aws "https://docs.aws.amazon.com/cli/latest/userguide/installing.html"
 	checkBinary kubectl "https://kubernetes.io/docs/tasks/tools/install-kubectl/"
 	checkBinary helm "https://github.com/kubernetes/helm#install"
-	checkBinary jq "https://stedolan.github.io/jq/download/"
-	checkBinary yawn "https://www.npmjs.com/package/yawn-yaml-cli#installation"
+	checkBinary jq "https://stedolan.github.io/jq/download/" 
   checkBinary yq "https://mikefarah.github.io/yq/#install"
     
   log_success "Step completed: Binary dependency checks passed"
