@@ -23,6 +23,7 @@ APP=""
 NAMESPACE=""
 NUM_INSTANCES=1
 ENTRYPOINT="app.js"
+TYPESCRIPT=0
 
 if [ -f "./shared/utils" ] ; then
   source ./shared/utils
@@ -41,6 +42,7 @@ OPTIONS:
   -n      namespace of NATS on cluster
   -a      name of deis app
   -e      entry point to start (defaults to app.js)
+  -t      typescript enabled, will start app with ts-node-dev instead of nodemon 
   -h      show this message
 
 EXAMPLES:
@@ -109,8 +111,12 @@ nats_tunnel () {
   get_num_instances
 
   deis ps:scale cmd=0 -a $APP
-	
-  nodemon ${ENTRYPOINT:-"app.js"}
+
+  if (($TYPESCRIPT > 0)) ; then
+	ts-node-dev ${ENTRYPOINT:-"app.js"}
+  else
+  	nodemon ${ENTRYPOINT:-"app.js"}
+  fi
 
   trap scaleUp EXIT INT TERM
 }
@@ -125,7 +131,7 @@ get_num_instances () {
 	fi
 }
 
-while getopts "ha:n:e:" opt; do
+while getopts "hta:n:e:" opt; do
 	case $opt in  
 		a)		 
 		  APP="$OPTARG"
@@ -136,16 +142,16 @@ while getopts "ha:n:e:" opt; do
 		e)		 
 		  ENTRYPOINT="$OPTARG"
 		  ;;
-    # w)
-		#   WATCH=1
-		#   ;;	   
-    h)
-		  usage
-		  ;;	
-    \?)
-		  echo "Invalid option: -$OPTARG" >&2      
-		  ;;    
-	esac
+		t)
+		  TYPESCRIPT=1
+	      ;;
+		h)
+			usage
+			;;	
+		\?)
+			echo "Invalid option: -$OPTARG" >&2      
+			;;    
+		esac
 	# shift $(expr $OPTIND - 1 )
 done
 
