@@ -162,7 +162,7 @@ all necessary resources on AWS.
 Be patient, this may take 5-10 minutes.
 
 EOF
-
+  # TODO: Add support for this line to install specifik version of k8s --kubernetes-version=1.15.10 
 	kops create cluster \
 	    --ssh-public-key ${SSH_KEY} \
 	    --topology=private \

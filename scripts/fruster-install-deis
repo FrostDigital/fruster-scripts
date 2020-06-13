@@ -302,12 +302,12 @@ EOF
 	yq w -i ${values} database.postgres.username "${postgresUser}"
 	yq w -i ${values} database.postgres.password "${postgresPassword}"
 	yq w -i ${values} database.postgres.host "${postgresHost}"
-	yq w -i ${values} database.postgres.port "\"${postgresPort}\""
+	yq w -i ${values} database.postgres.port --tag '!!str' "${postgresPort}"
 	yq w -i ${values} global.use_cni "true"
 	yq w -i ${values} global.grafana_location "off-cluster"
 	yq w -i ${values} global.influxdb_location "off-cluster"
 	
-	helm install deis/workflow --namespace deis --name deis -f ${values}
+	helm install hephy/workflow --namespace deis --name deis -f ${values}
 
 	sleep 45
 

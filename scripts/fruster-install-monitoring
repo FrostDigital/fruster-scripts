@@ -103,7 +103,6 @@ EOF
   helm install \
     --set persistence.enabled=true,persistence.accessModes={ReadWriteOnce},persistence.size=2Gi \
     --set adminPassword="${GRAFANA_PASSWORD}" \
-    --set rbac.create=false \
    	--name grafana \
     --namespace "${NAMESPACE}" \
     stable/grafana
@@ -118,30 +117,17 @@ EOF
 }
 
 
-while getopts ":vhn:r:" opt; do
-	case $opt in    	
-  s)
-		INFLUXDB_VOLUME_SIZE="$OPTARG"
-		;;
-	n)
-		NAMESPACE="$OPTARG"
-		;;		
-  v)
-	  DEBUG=1
-    #set -o xtrace
-    ;;	
-  h)
-		usage
-		;;	
-  p)
-    GRAFANA_PASSWORD="$OPTARG"
-    ;;
-  \?)
-		echo "Invalid option: -$OPTARG" >&2      
-		;;    
-	esac
-	shift $(expr $OPTIND - 1 )
+while getopts "s:n:p:vh" opt; do
+  case $opt in    	
+  s) INFLUXDB_VOLUME_SIZE="$OPTARG" ;;
+  n) NAMESPACE="$OPTARG" ;;		
+  p) GRAFANA_PASSWORD="$OPTARG" ;;
+  v) DEBUG=1 ;;	
+  h) usage ;;
+  \?) echo "Invalid option: -$OPTARG" >&2 ;;    
+  esac
 done
+shift $(expr $OPTIND - 1 )
 
 NAMESPACE="${NAMESPACE:-monitoring}"
 GRAFANA_PASSWORD="${GRAFANA_PASSWORD:-Fruster123}"
