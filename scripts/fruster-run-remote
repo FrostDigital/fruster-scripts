@@ -20,7 +20,7 @@ set -o pipefail
 WATCH=0
 DEBUG=0
 APP=""
-NAMESPACE=""
+NATS_POD=""
 NUM_INSTANCES=1
 ENTRYPOINT="app.js"
 TYPESCRIPT=0
@@ -33,13 +33,13 @@ fi
 
 usage () {
 	cat << EOF
-Usage: fruster-run-remote [-n NATS namespace] [-a deis app name] [-e app/service entrypoint]
+Usage: fruster-run-remote [-n NATS pod name] [-a deis app name] [-e app/service entrypoint]
 
 Run local node service remote by tunneling to NATS bus and copying 
 existing apps config. 
 
 OPTIONS:
-  -n      namespace of NATS on cluster
+  -n      name of NATS pod
   -a      name of deis app
   -e      entry point to start (defaults to app.js)
   -t      typescript enabled, will start app with ts-node-dev instead of nodemon 
@@ -78,13 +78,13 @@ source_deis_config () {
   set +o allexport
 }
 
-validate_namespace () {
+validate_nats_pod () {
   set +o errexit
 
-	if kubectl get ns $NAMESPACE ; then
-			log_success "NATS namespace ${NAMESPACE} exists"
+	if kubectl get po $NATS_POD ; then
+			log_success "NATS pod ${NATS_POD} exists"
 	else
-			log_error "NATS namespace ${NAMESPACE} does not exist"
+			log_error "NATS pod ${NATS_POD} does not exist"
 			exit 1;			
 	fi
 
@@ -102,12 +102,11 @@ nats_tunnel () {
   source_deis_config $APP
 
   # Start tunnel
-  kubectl -n $NAMESPACE port-forward \
-    $(kubectl -n $NAMESPACE get pod -l app=nats -o template --template="{{(index .items 0).metadata.name}}") 4223:4222 &
+  kubectl port-forward $NATS_POD 4223:4222 &
 
   # Overwrite BUS env to point to tunneled one
   export BUS=nats://localhost:4223
-		
+
   get_num_instances
 
   deis ps:scale cmd=0 -a $APP
@@ -137,7 +136,7 @@ while getopts "hta:n:e:" opt; do
 		  APP="$OPTARG"
 		  ;;  	
 		n)
-		  NAMESPACE="$OPTARG"
+		  NATS_POD="$OPTARG"
 		  ;;
 		e)		 
 		  ENTRYPOINT="$OPTARG"
@@ -155,8 +154,8 @@ while getopts "hta:n:e:" opt; do
 	# shift $(expr $OPTIND - 1 )
 done
 
-if [ -z "${NAMESPACE:-}" ]; then
-	log_error "Missing NATS namespace"
+if [ -z "${NATS_POD:-}" ]; then
+	log_error "Missing NATS NATS_POD"
 	usage
 	exit 1;
 fi
@@ -168,6 +167,5 @@ if [ -z "${APP:-}" ]; then
 fi
 
 validateDeps
-validate_namespace
-nats_tunnel 
-
+validate_nats_pod
+nats_tunnel
