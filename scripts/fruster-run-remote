@@ -20,6 +20,7 @@ set -o pipefail
 WATCH=0
 DEBUG=0
 APP=""
+NAMESPACE="default"
 NATS_POD=""
 NUM_INSTANCES=1
 ENTRYPOINT="app.js"
@@ -33,13 +34,14 @@ fi
 
 usage () {
 	cat << EOF
-Usage: fruster-run-remote [-n NATS pod name] [-a deis app name] [-e app/service entrypoint]
+Usage: fruster-run-remote [-n NATS namespace] [-p NATS pod]  [-a deis app name] [-e app/service entrypoint]
 
 Run local node service remote by tunneling to NATS bus and copying 
 existing apps config. 
 
 OPTIONS:
-  -n      name of NATS pod
+  -n      name of NATS namespace (defaults to default)
+  -p      name of NATS pod
   -a      name of deis app
   -e      entry point to start (defaults to app.js)
   -t      typescript enabled, will start app with ts-node-dev instead of nodemon 
@@ -47,14 +49,15 @@ OPTIONS:
 
 EXAMPLES:
 	
-  fruster-run-remote -n instapool -a ip-user-service
+  fruster-run-remote -p ip-nats-1 -a ip-user-service
+  fruster-run-remote -p oo-nats-1 -a oo-job-service -e app.ts -t
 
 EOF
 	exit
 }
 
 validateDeps() {
- 	log_info "\nValidating that all required binaries are installed..."
+	log_info "\nValidating that all required binaries are installed..."
 	checkBinary kubectl "https://kubernetes.io/docs/tasks/tools/install-kubectl/"
 	checkBinary deis "https://github.com/deis/workflow-cli"
 	checkBinary nodemon "https://www.npmjs.com/package/nodemon"
@@ -78,14 +81,27 @@ source_deis_config () {
   set +o allexport
 }
 
+validate_namespace () {
+  set +o errexit
+
+	if kubectl get ns $NAMESPACE ; then
+			log_success "NATS namespace ${NAMESPACE} exists"
+	else
+			log_error "NATS namespace ${NAMESPACE} does not exist"
+			exit 1;
+	fi
+
+	set -o errexit
+}
+
 validate_nats_pod () {
   set +o errexit
 
-	if kubectl get po $NATS_POD ; then
+	if kubectl get -n $NAMESPACE po $NATS_POD ; then
 			log_success "NATS pod ${NATS_POD} exists"
 	else
 			log_error "NATS pod ${NATS_POD} does not exist"
-			exit 1;			
+			exit 1;
 	fi
 
 	set -o errexit
@@ -102,7 +118,7 @@ nats_tunnel () {
   source_deis_config $APP
 
   # Start tunnel
-  kubectl port-forward $NATS_POD 4223:4222 &
+  kubectl -n $NAMESPACE port-forward $NATS_POD 4223:4222 &
 
   # Overwrite BUS env to point to tunneled one
   export BUS=nats://localhost:4223
@@ -114,7 +130,7 @@ nats_tunnel () {
   if (($TYPESCRIPT > 0)) ; then
 	ts-node-dev ${ENTRYPOINT:-"app.js"}
   else
-  	nodemon ${ENTRYPOINT:-"app.js"}
+	nodemon ${ENTRYPOINT:-"app.js"}
   fi
 
   trap scaleUp EXIT INT TERM
@@ -130,26 +146,29 @@ get_num_instances () {
 	fi
 }
 
-while getopts "hta:n:e:" opt; do
-	case $opt in  
-		a)		 
+while getopts "hta:n:e:p:" opt; do
+	case $opt in
+		a)
 		  APP="$OPTARG"
-		  ;;  	
+		  ;;
 		n)
+		  NAMESPACE="$OPTARG"
+		  ;;
+		p)
 		  NATS_POD="$OPTARG"
 		  ;;
-		e)		 
+		e)
 		  ENTRYPOINT="$OPTARG"
 		  ;;
 		t)
 		  TYPESCRIPT=1
-	      ;;
+		  ;;
 		h)
 			usage
-			;;	
+			;;
 		\?)
-			echo "Invalid option: -$OPTARG" >&2      
-			;;    
+			echo "Invalid option: -$OPTARG" >&2
+			;;
 		esac
 	# shift $(expr $OPTIND - 1 )
 done
@@ -167,5 +186,6 @@ if [ -z "${APP:-}" ]; then
 fi
 
 validateDeps
+validate_namespace
 validate_nats_pod
 nats_tunnel
