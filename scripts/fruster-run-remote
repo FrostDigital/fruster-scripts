@@ -61,6 +61,7 @@ validateDeps() {
 	checkBinary kubectl "https://kubernetes.io/docs/tasks/tools/install-kubectl/"
 	checkBinary deis "https://github.com/deis/workflow-cli"
 	checkBinary nodemon "https://www.npmjs.com/package/nodemon"
+	checkBinary ts-node-dev "https://www.npmjs.com/package/ts-node-dev"
 	log_success "Binary dependency checks passed"
 }
 
@@ -128,7 +129,7 @@ nats_tunnel () {
   deis ps:scale cmd=0 -a $APP
 
   if (($TYPESCRIPT > 0)) ; then
-	ts-node-dev ${ENTRYPOINT:-"app.js"}
+	ts-node-dev ${ENTRYPOINT:-"app.ts"}
   else
 	nodemon ${ENTRYPOINT:-"app.js"}
   fi
