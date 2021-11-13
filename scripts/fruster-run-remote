@@ -111,7 +111,8 @@ validate_nats_pod () {
 scaleUp () {
   echo "Scaling up ${NUM_INSTANCES} instance(s) before exit)..."    
   deis ps:scale cmd=${NUM_INSTANCES} -a $APP
-	pkill -a kubectl
+  pkill -a kubectl ||true
+  exit 0;
 }
 
 nats_tunnel () {  
@@ -128,13 +129,13 @@ nats_tunnel () {
 
   deis ps:scale cmd=0 -a $APP
 
+  trap scaleUp EXIT INT TERM
+
   if (($TYPESCRIPT > 0)) ; then
 	ts-node-dev ${ENTRYPOINT:-"app.ts"}
   else
 	nodemon ${ENTRYPOINT:-"app.js"}
   fi
-
-  trap scaleUp EXIT INT TERM
 }
 
 # Get number of instances of deis app before scaling down

@@ -26,21 +26,13 @@ unzip $ZIP_PACKAGE -d $TEMP_DIR
 cp -R $TEMP_DIR/fruster-scripts-master/* $TARGET_DIR
 
 # Remove old versions
-rm -f $BIN_DIR/fruster-create-kube
-rm -f $BIN_DIR/fruster-install-deis
-rm -f $BIN_DIR/fruster-install-nats
 rm -f $BIN_DIR/fruster-switch
-rm -f $BIN_DIR/fruster-install-monitoring
 rm -f $BIN_DIR/fruster-run-remote
 
 echo "Linking..."
 
 # Link binaries into /usr/local/bin
-ln -s $TARGET_DIR/scripts/fruster-create-kube $BIN_DIR/fruster-create-kube
-ln -s $TARGET_DIR/scripts/fruster-install-deis $BIN_DIR/fruster-install-deis
-ln -s $TARGET_DIR/scripts/fruster-install-nats $BIN_DIR/fruster-install-nats
 ln -s $TARGET_DIR/scripts/fruster-switch $BIN_DIR/fruster-switch
-ln -s $TARGET_DIR/scripts/fruster-install-monitoring $BIN_DIR/fruster-install-monitoring
 ln -s $TARGET_DIR/scripts/fruster-run-remote $BIN_DIR/fruster-run-remote
 
 echo "Installation complete!"
