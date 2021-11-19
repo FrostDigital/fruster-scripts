@@ -40,6 +40,7 @@ Any kubectl or deis commands will be invoked with this cluster as target.
 OPTIONS:
   -i      init fruster-switch
   -a      add kube cluster
+  -p      set AWS_PROFILE 
   -v      verbose logging
   -h      show this message
 
@@ -237,7 +238,7 @@ validateDeps
 validateDeisHome
 validateKubeHome
 
-while getopts ":vhia:" opt; do  
+while getopts ":vhia:p:" opt; do  
 	case $opt in    	    	  
     v)
 	    DEBUG=1
@@ -249,6 +250,10 @@ while getopts ":vhia:" opt; do
     a)
       addCluster $OPTARG
       exit
+      ;;
+    p)
+      export AWS_PROFILE=$OPTARG
+      echo "Setting AWS_PROFILE=$AWS_PROFILE"
       ;;	
     h)
       usage
