@@ -25,6 +25,7 @@ NATS_POD=""
 NUM_INSTANCES=1
 ENTRYPOINT="app.js"
 TYPESCRIPT=0
+RUNNER=""
 
 if [ -f "./shared/utils" ] ; then
   source ./shared/utils
@@ -44,13 +45,15 @@ OPTIONS:
   -p      name of NATS pod
   -a      name of deis app
   -e      entry point to start (defaults to app.js)
-  -t      typescript enabled, will start app with ts-node-dev instead of nodemon 
+  -t      typescript enabled, will start app with ts-node-dev instead of nodemon
+  -r 	  runner to use, will override -t option 
   -h      show this message
 
 EXAMPLES:
 	
   fruster-run-remote -p ip-nats-1 -a ip-user-service
   fruster-run-remote -p oo-nats-1 -a oo-job-service -e app.ts -t
+  fruster-run-remote -p oo-nats-1 -a oo-job-service -r fruster-runner -e app.ts
 
 EOF
 	exit
@@ -60,8 +63,8 @@ validateDeps() {
 	log_info "\nValidating that all required binaries are installed..."
 	checkBinary kubectl "https://kubernetes.io/docs/tasks/tools/install-kubectl/"
 	checkBinary deis "https://github.com/deis/workflow-cli"
-	checkBinary nodemon "https://www.npmjs.com/package/nodemon"
-	checkBinary ts-node-dev "https://www.npmjs.com/package/ts-node-dev"
+	#checkBinary nodemon "https://www.npmjs.com/package/nodemon"
+	#checkBinary ts-node-dev "https://www.npmjs.com/package/ts-node-dev"
 	log_success "Binary dependency checks passed"
 }
 
@@ -131,11 +134,18 @@ nats_tunnel () {
 
   trap scaleUp EXIT INT TERM
 
-  if (($TYPESCRIPT > 0)) ; then
-	ts-node-dev ${ENTRYPOINT:-"app.ts"}
-  else
-	nodemon ${ENTRYPOINT:-"app.js"}
+  if [ -z "$RUNNER" ]	
+  then
+	if (($TYPESCRIPT > 0)) ; then
+		RUNNER="ts-node-dev"
+  	else
+		RUNNER="nodemon"
+  	fi	
   fi
+
+  echo "Using runner ${RUNNER}"
+	
+  ${RUNNER} ${ENTRYPOINT:-"app.js"}
 }
 
 # Get number of instances of deis app before scaling down
@@ -148,7 +158,7 @@ get_num_instances () {
 	fi
 }
 
-while getopts "hta:n:e:p:" opt; do
+while getopts "hta:n:e:p:r:" opt; do
 	case $opt in
 		a)
 		  APP="$OPTARG"
@@ -164,6 +174,9 @@ while getopts "hta:n:e:p:" opt; do
 		  ;;
 		t)
 		  TYPESCRIPT=1
+		  ;;
+		r)
+		  RUNNER="$OPTARG"
 		  ;;
 		h)
 			usage
